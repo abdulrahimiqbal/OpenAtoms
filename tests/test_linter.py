@@ -2,6 +2,11 @@ import pytest
 from openatoms.core import Matter, Container, Phase
 from openatoms.actions import Move, Transform, Combine
 from openatoms.dag import ProtocolGraph
+from openatoms.exceptions import (
+    CapacityExceededError,
+    EmptyContainerError,
+    ThermodynamicViolationError,
+)
 
 # --- FIXTURES (Setting up the lab for each test) ---
 @pytest.fixture
@@ -25,20 +30,25 @@ def test_linter_catches_overflow(basic_lab):
     # AI tries to move 100mL into a 50mL container
     graph.add_step(Move(source=source, destination=dest, amount_ml=100))
 
-    # The Linter should catch this and return False
-    assert graph.dry_run() is False
+    # The linter should raise a structured physical constraint error.
+    with pytest.raises(CapacityExceededError):
+        graph.dry_run()
     assert graph.is_compiled is False
+    assert source.current_volume == 500
+    assert dest.current_volume == 0
 
 def test_linter_catches_thermodynamic_violation(basic_lab):
     """Simulates an AI trying to melt a plastic container."""
-    source, dest = basic_lab
+    _, dest = basic_lab
     graph = ProtocolGraph("Test_Meltdown")
 
     # AI tries to heat a container with an 80C limit to 250C
     graph.add_step(Transform(target=dest, parameter="temperature_c", target_value=250.0, duration_s=300))
 
-    # The Linter should catch the fire hazard
-    assert graph.dry_run() is False
+    # The linter should catch the thermal safety violation.
+    with pytest.raises(ThermodynamicViolationError):
+        graph.dry_run()
+    assert graph.is_compiled is False
 
 def test_linter_catches_empty_combination(basic_lab):
     """Simulates an AI trying to mix an empty beaker."""
@@ -47,7 +57,28 @@ def test_linter_catches_empty_combination(basic_lab):
 
     graph.add_step(Combine(target=dest, method="vortex", duration_s=30))
 
-    assert graph.dry_run() is False
+    with pytest.raises(EmptyContainerError):
+        graph.dry_run()
+    assert graph.is_compiled is False
+
+def test_dry_run_rolls_back_state_on_physics_error(basic_lab):
+    """Ensures failed dry runs restore all containers to pre-run state."""
+    source, dest = basic_lab
+    graph = ProtocolGraph("Test_Rollback")
+
+    graph.add_step(Move(source=source, destination=dest, amount_ml=20))
+    graph.add_step(
+        Transform(target=dest, parameter="temperature_c", target_value=250.0, duration_s=60)
+    )
+
+    with pytest.raises(ThermodynamicViolationError):
+        graph.dry_run()
+
+    assert graph.is_compiled is False
+    assert source.current_volume == 500
+    assert dest.current_volume == 0
+    assert len(dest.contents) == 0
+    assert source.contents[0].temp_c == 20
 
 # --- TEST SUITE 2: THE HAPPY PATH (UNIVERSALITY) ---
 

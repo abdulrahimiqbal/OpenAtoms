@@ -1,75 +1,60 @@
-# OpenAtoms
+# OpenAtoms: Code for the Physical World
 
-**The Deterministic Execution Layer for Physical AI**
+**Mission: Atoms for the Real World.**
 
-OpenAtoms is an open-source deterministic compiler for physical workflows. It converts probabilistic AI intent into validated, executable DAGs before commands ever reach real-world hardware.
+OpenAtoms is the deterministic execution layer that bridges AI reasoning and physical systems.
 
-## Why OpenAtoms?
+## The Problem
 
-Large language models are probabilistic. Pipettes, bioreactors, heaters, and robots are not.
+LLMs live in a world of bits; reality lives in a world of atoms.
 
-That mismatch is where physical hallucinations become dangerous: invalid volumes, unsafe temperatures, impossible transitions, and brittle step ordering can all escape a pure text interface.
+That gap is where physical hallucinations become expensive and dangerous. A plausible text plan can still violate volume limits, thermal constraints, ordering rules, and machine capabilities.
 
-OpenAtoms acts as a physics linter and compilation layer between AI agents and instruments:
-- It models matter, containers, and constraints as typed primitives.
-- It validates action graphs (`dry_run`) before execution.
-- It exports a universal deterministic protocol JSON.
-- It compiles the same validated graph to heterogeneous targets (for example, Opentrons and IoT systems).
+## The Solution
 
-This lets teams build once, validate once, and execute safely across labs, factories, and autonomous hardware stacks.
+OpenAtoms provides a hardware-agnostic, deterministic compiler that translates AI intent into physical execution:
+
+- Model physical entities with typed primitives (`Matter`, `Container`, `Action`).
+- Compile agent plans into deterministic protocol graphs (`ProtocolGraph`).
+- Validate constraints before execution with `dry_run()`.
+- Export a universal machine-readable protocol JSON for downstream hardware runtimes.
+
+## The Tooling
+
+OpenAtoms includes:
+
+- Built-in physics validation for volume, temperature, and operation safety checks.
+- Machine-readable agent feedback via structured `PhysicsError` payloads for self-correction loops.
+- Universal hardware adapters that compile one validated protocol to multiple execution targets.
 
 ## Quick Start
 
-### 1) Define Matter and Containers
-
 ```python
 from openatoms.core import Matter, Container, Phase
-
-source = Container("Vessel_A", max_volume_ml=1000, max_temp_c=120)
-dest = Container("Vessel_B", max_volume_ml=250, max_temp_c=120)
-source.contents.append(Matter("H2O", Phase.LIQUID, 500, 500))
-```
-
-### 2) Build and Validate a DAG
-
-```python
-from openatoms.actions import Move, Transform
+from openatoms.actions import Move
 from openatoms.dag import ProtocolGraph
 
-graph = ProtocolGraph("Transfer_and_Heat")
-graph.add_step(Move(source, dest, 50))
-graph.add_step(Transform(dest, "temperature_c", 90.0, 60))
+a = Container("A", max_volume_ml=100, max_temp_c=100)
+b = Container("B", max_volume_ml=100, max_temp_c=100)
+a.contents.append(Matter("H2O", Phase.LIQUID, mass_g=10, volume_ml=10))
 
-ok = graph.dry_run()  # Physics lint + deterministic validation
+graph = ProtocolGraph("Hello_Atoms")
+graph.add_step(Move(a, b, 5))
+graph.dry_run()
+print(graph.export_json())
 ```
 
-### 3) Compile to Opentrons
-
-```python
-from openatoms.adapters import OpentronsAdapter
-
-if ok:
-    payload = graph.export_json()
-    opentrons_script = OpentronsAdapter(payload).compile()
-    print(opentrons_script)
-```
-
-### Run the Included Example
+Run examples:
 
 ```bash
-python examples/basic_compilation.py
+python examples/hello_atoms.py
+python examples/openai_tool_calling.py
 ```
 
 ## Repository Layout
 
 ```text
-OpenAtoms/
-  openatoms/
-  examples/
-  README.md
-  requirements.txt
+openatoms/   # Core compiler, actions, adapters, and tool schemas
+examples/    # Minimal and agent-loop integration examples
+tests/       # Validation test suite
 ```
-
-## Vision
-
-OpenAtoms is building the software substrate for reliable physical AI: deterministic planning, static safety checks, and hardware-agnostic execution.

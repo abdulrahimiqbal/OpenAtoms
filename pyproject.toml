@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "openatoms"
+version = "0.1.0"
+authors = [
+  { name = "OpenAtoms Contributors" },
+]
+description = "OpenAtoms is a deterministic compiler that translates AI intent into validated physical execution."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { file = "LICENSE" }
+keywords = ["physical-ai", "compiler", "robotics", "automation", "deterministic-systems"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence"
+]
+dependencies = []
+
+[project.urls]
+"Homepage" = "https://github.com/abdulrahimiqbal/OpenAtoms"
+"Repository" = "https://github.com/abdulrahimiqbal/OpenAtoms"
+"Issues" = "https://github.com/abdulrahimiqbal/OpenAtoms/issues"
