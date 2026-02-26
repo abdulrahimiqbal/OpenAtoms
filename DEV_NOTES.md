@@ -395,3 +395,49 @@ exit_code=0
   - installs `pip install -e ".[dev,sim-cantera]"`
   - sets `OPENATOMS_CI=1`
   - runs `python scripts/verify_reproducibility.py`
+
+## Blocker A/B Verification (2026-02-26)
+
+Scope:
+- Blocker A: single canonical IR runtime schema + legacy forwarding guard
+- Blocker B: deterministic benchmark regeneration + non-committed artifact policy
+
+### Commands run and outcomes
+
+1) `.venv/bin/python -m pip install -e ".[dev]"`
+- Result: success
+
+2) `.venv/bin/python -m pytest -q`
+- Result: success
+- Summary: `55 passed, 15 warnings in 76.13s`
+
+3) `.venv/bin/python -m build`
+- Result: failed in isolated mode (offline dependency bootstrap)
+- Error excerpt: `Could not find a version that satisfies the requirement setuptools>=61.0`
+
+4) `.venv/bin/python -m build --no-isolation`
+- Result: success
+- Built: `dist/openatoms-0.2.0.tar.gz`, `dist/openatoms-0.2.0-py3-none-any.whl`
+
+5) Wheel smoke test (manual)
+- Command: create temp venv, install `dist/*.whl`, run `from openatoms.ir import load_schema, validate_ir`
+- Result: success
+- Output: `https://openatoms.org/ir/v1.1.0/schema.json`
+
+6) `.venv/bin/python -m eval.run_benchmark --seed 123 --n 200 --suite realistic`
+- Result: success
+- Output includes:
+  - `seed=123`, `n=200`, `suite.name=realistic`
+  - `schema_version=1.1.0`
+  - `schema_resource=schema_v1_1_0.json`
+  - `repo_commit=cd7310303b4180f25e323747fd1f77123f23fad1`
+  - `timestamp_utc=2026-02-26T19:09:32Z`
+
+7) Competing runtime schema path check
+- Command: `rg -n "openatoms/schemas|schemas/ir-1.1.0.schema.json" openatoms`
+- Result: no runtime matches
+- File check: `openatoms/schemas/ir-1.1.0.schema.json` absent
+
+### Notes
+- Generated benchmark artifacts are ignored by policy and no longer tracked; `eval/results/.gitkeep` preserves directory presence.
+- Example benchmark report is documented at `docs/benchmark_example.md`.
