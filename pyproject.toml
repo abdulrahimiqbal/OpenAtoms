@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "openatoms"
-version = "0.1.0"
+version = "0.2.0"
 authors = [
   { name = "OpenAtoms Contributors" },
 ]
@@ -27,6 +27,14 @@ science = [
   "cantera>=3.0",
   "opentrons>=7.0",
 ]
+dev = [
+  "build>=1.2.0",
+  "hypothesis>=6.100.0",
+  "jsonschema>=4.20.0",
+  "mypy>=1.8.0",
+  "pytest>=8.0.0",
+  "ruff>=0.4.0",
+]
 
 [project.urls]
 "Homepage" = "https://github.com/abdulrahimiqbal/OpenAtoms"
@@ -35,3 +43,21 @@ science = [
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
+
+[tool.setuptools.package-data]
+openatoms = ["schemas/*.json"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+check_untyped_defs = true
+ignore_missing_imports = true

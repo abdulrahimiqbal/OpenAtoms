@@ -3,7 +3,6 @@ import json
 import openatoms.adapters.arduino_cloud as arduino_cloud_module
 import openatoms.adapters.home_assistant as home_assistant_module
 import openatoms.adapters.opentrons as opentrons_module
-
 from openatoms.actions import Move, Transform
 from openatoms.adapters import (
     ArduinoCloudAdapter,

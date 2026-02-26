@@ -19,6 +19,7 @@ def _state_observation_json(
 ) -> str:
     payload = {
         "type": "StateObservation",
+        "schema_version": "1.0.0",
         "node": "Thermo-Kinetic",
         "status": status,
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
@@ -144,4 +145,3 @@ class VirtualReactor:
             "reactor_state": reactor,
             "reactor_network": network,
         }
-

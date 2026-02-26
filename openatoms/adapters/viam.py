@@ -22,6 +22,28 @@ class ViamAdapter(BaseAdapter):
             result["dispatch"] = self._dispatch_with_sdk(commands)
         return result
 
+    def discover_capabilities(self) -> Dict[str, Any]:
+        return {
+            "name": "ViamAdapter",
+            "actions": ["Move"],
+            "features": ["arm_move_to", "base_set_power", "sdk_dispatch"],
+        }
+
+    def secure_config_schema(self) -> Dict[str, Any]:
+        return {
+            "required_env": [
+                "VIAM_ROBOT_ADDRESS",
+                "VIAM_API_KEY_ID",
+                "VIAM_API_KEY",
+                "VIAM_COMPONENT_NAME",
+            ],
+            "optional_env": [
+                "VIAM_COMPONENT_KIND",
+                "VIAM_ARM_TARGETS_JSON",
+                "VIAM_BASE_POWER_MAP_JSON",
+            ],
+        }
+
     def _map_commands(self, protocol_data: Dict[str, Any]) -> List[Dict[str, Any]]:
         component_kind = os.environ.get("VIAM_COMPONENT_KIND", "arm").strip().lower()
         arm_targets = self._load_env_json("VIAM_ARM_TARGETS_JSON")
@@ -36,7 +58,10 @@ class ViamAdapter(BaseAdapter):
             destination = str(params.get("destination", ""))
 
             if component_kind == "base":
-                power = base_powers.get(destination, {"linear": [0.25, 0.0, 0.0], "angular": [0.0, 0.0, 0.0]})
+                power = base_powers.get(
+                    destination,
+                    {"linear": [0.25, 0.0, 0.0], "angular": [0.0, 0.0, 0.0]},
+                )
                 commands.append({"api": "base.set_power", "power": power})
             else:
                 target = arm_targets.get(
@@ -95,12 +120,12 @@ class ViamAdapter(BaseAdapter):
                 sent: List[Dict[str, Any]] = []
                 for command in commands:
                     if command["api"] == "component.move_to":
-                        move_to = getattr(component, "move_to")
+                        move_to = component.move_to
                         maybe_awaitable = move_to(command["target"])
                         if inspect.isawaitable(maybe_awaitable):
                             await maybe_awaitable
                     elif command["api"] == "base.set_power":
-                        set_power = getattr(component, "set_power")
+                        set_power = component.set_power
                         power = command["power"]
                         linear = power.get("linear", [0.25, 0.0, 0.0])
                         angular = power.get("angular", [0.0, 0.0, 0.0])

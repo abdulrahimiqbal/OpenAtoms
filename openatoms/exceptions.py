@@ -7,22 +7,29 @@ from typing import Optional
 class PhysicsError(Exception):
     """Base exception for all OpenAtoms physical validations."""
 
+    ERROR_CONTRACT_VERSION = "1.1.0"
+
     def __init__(self, message: str, error_type: str, details: dict):
         super().__init__(message)
         self.error_type = error_type
         self.details = details
+        self.correlation_id: Optional[str] = None
 
-    def to_agent_payload(self) -> str:
+    def to_agent_payload(self, correlation_id: Optional[str] = None) -> str:
         """
         Serialize the error into structured JSON designed for LLM self-correction.
         """
+        resolved_correlation = correlation_id or self.correlation_id
         payload = {
             "status": "failed",
             "error_type": self.error_type,
+            "error_contract_version": self.ERROR_CONTRACT_VERSION,
             "message": str(self),
             "physical_constraints": self.details,
             "hint": "Adjust your parameters to fit within the physical_constraints provided.",
         }
+        if resolved_correlation:
+            payload["correlation_id"] = resolved_correlation
         return json.dumps(payload, indent=2)
 
 
@@ -147,3 +154,45 @@ class SimulationDependencyError(PhysicsError):
                 "import_error": import_error,
             },
         )
+
+
+class DependencyGraphError(PhysicsError):
+    """Raised when a dependency graph is malformed or cyclic."""
+
+    def __init__(self, message: str, details: dict):
+        super().__init__(message=message, error_type="DependencyGraphError", details=details)
+
+
+class OrderingViolationError(PhysicsError):
+    """Raised when action ordering rules are violated."""
+
+    def __init__(self, message: str, details: dict):
+        super().__init__(message=message, error_type="OrderingViolationError", details=details)
+
+
+class CompatibilityViolationError(PhysicsError):
+    """Raised when incompatible materials are mixed or transferred."""
+
+    def __init__(self, message: str, details: dict):
+        super().__init__(message=message, error_type="CompatibilityViolationError", details=details)
+
+
+class HazardClassViolationError(PhysicsError):
+    """Raised when hazard constraints or safe-default rules are violated."""
+
+    def __init__(self, message: str, details: dict):
+        super().__init__(message=message, error_type="HazardClassViolationError", details=details)
+
+
+class CapabilityBoundError(PhysicsError):
+    """Raised when requested steps exceed a target capability profile."""
+
+    def __init__(self, message: str, details: dict):
+        super().__init__(message=message, error_type="CapabilityBoundError", details=details)
+
+
+class PolicyViolationError(PhysicsError):
+    """Raised when runtime policy gates reject an execution."""
+
+    def __init__(self, message: str, details: dict):
+        super().__init__(message=message, error_type="PolicyViolationError", details=details)

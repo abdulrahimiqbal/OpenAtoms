@@ -1,41 +1,44 @@
 """Action primitives used to build OpenAtoms protocol graphs."""
 
-try:
-    from .core import Container
-    from .exceptions import (
-        CapacityExceededError,
-        EmptyContainerError,
-        InsufficientMassError,
-        ThermodynamicViolationError,
-    )
-except ImportError:  # pragma: no cover - fallback for direct script execution
-    from core import Container
-    from exceptions import (
-        CapacityExceededError,
-        EmptyContainerError,
-        InsufficientMassError,
-        ThermodynamicViolationError,
-    )
+from typing import Optional, Union
+
+from .core import Container
+from .exceptions import (
+    CapacityExceededError,
+    CompatibilityViolationError,
+    EmptyContainerError,
+    InsufficientMassError,
+    ThermodynamicViolationError,
+)
+from .units import Quantity, as_time_s, as_volume_ml
+
 
 class Action:
     """Base class for all protocol actions."""
 
     def __init__(self):
         self.status = "pending"
+        self.state_observation_json: Optional[str] = None
 
     def validate(self) -> bool:
         """Validate that an action is physically executable."""
         raise NotImplementedError
 
+
 class Move(Action):
     """Transfer liquid volume from one container to another."""
 
-    def __init__(self, source: Container, destination: Container, amount_ml: float):
+    def __init__(
+        self,
+        source: Container,
+        destination: Container,
+        amount_ml: Union[float, Quantity],
+    ):
         """Create a move operation."""
         super().__init__()
         self.source = source
         self.destination = destination
-        self.amount_ml = amount_ml
+        self.amount_ml = as_volume_ml(amount_ml)
 
     def validate(self):
         """Validate source availability and destination capacity."""
@@ -50,18 +53,42 @@ class Move(Action):
                 self.destination.name, projected_vol, self.destination.max_volume_ml
             )
 
+        source_hazards = self.source.hazard_classes
+        destination_hazards = self.destination.hazard_classes
+        blocked = self.destination.incompatible_hazards.intersection(source_hazards)
+        if blocked:
+            raise CompatibilityViolationError(
+                message=(
+                    f"Destination '{self.destination.name}' rejects hazard classes: "
+                    f"{sorted(blocked)}."
+                ),
+                details={
+                    "destination": self.destination.name,
+                    "blocked_hazard_classes": sorted(blocked),
+                    "source_hazard_classes": sorted(source_hazards),
+                    "destination_hazard_classes": sorted(destination_hazards),
+                },
+            )
+
         return True
+
 
 class Transform(Action):
     """Apply a controlled transformation to a target container."""
 
-    def __init__(self, target: Container, parameter: str, target_value: float, duration_s: float):
+    def __init__(
+        self,
+        target: Container,
+        parameter: str,
+        target_value: float,
+        duration_s: Union[float, Quantity],
+    ):
         """Create a transformation action."""
         super().__init__()
         self.target = target
         self.parameter = parameter
         self.target_value = target_value
-        self.duration_s = duration_s
+        self.duration_s = as_time_s(duration_s)
 
     def validate(self):
         """Validate that transformation parameters are within safe limits."""
@@ -83,15 +110,21 @@ class Transform(Action):
 
         return True
 
+
 class Combine(Action):
     """Mix or combine the contents of a container."""
 
-    def __init__(self, target: Container, method: str, duration_s: float):
+    def __init__(
+        self,
+        target: Container,
+        method: str,
+        duration_s: Union[float, Quantity],
+    ):
         """Create a mixing action."""
         super().__init__()
         self.target = target
         self.method = method
-        self.duration_s = duration_s
+        self.duration_s = as_time_s(duration_s)
 
     def validate(self):
         """Validate that the target contains material to combine."""
@@ -99,6 +132,7 @@ class Combine(Action):
             raise EmptyContainerError(self.target.name, self.method)
 
         return True
+
 
 class Measure(Action):
     """Measure a property of a container with a virtual sensor."""

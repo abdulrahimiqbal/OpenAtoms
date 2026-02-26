@@ -12,6 +12,9 @@ from .base import BaseAdapter
 class BambuAdapter(BaseAdapter):
     """Translate Transform/Action steps into printer G-code over MQTT."""
 
+    def __init__(self, *, mqtt_client_factory=None):
+        self._mqtt_client_factory = mqtt_client_factory
+
     def execute(self, dag_json: Any) -> Dict[str, Any]:
         protocol_data = self._prepare_payload(dag_json)
         gcode_lines = self._to_gcode(protocol_data)
@@ -23,10 +26,14 @@ class BambuAdapter(BaseAdapter):
 
     def publish_gcode(self, gcode_lines: List[str]) -> Dict[str, Any]:
         """Send generated G-code commands to a Bambu MQTT broker."""
-        try:
-            import paho.mqtt.client as mqtt
-        except ImportError as exc:  # pragma: no cover - optional dependency path
-            raise RuntimeError("Install paho-mqtt to publish Bambu MQTT commands.") from exc
+        if self._mqtt_client_factory is None:
+            try:
+                import paho.mqtt.client as mqtt
+            except ImportError as exc:  # pragma: no cover - optional dependency path
+                raise RuntimeError("Install paho-mqtt to publish Bambu MQTT commands.") from exc
+            mqtt_client_factory = mqtt.Client
+        else:
+            mqtt_client_factory = self._mqtt_client_factory
 
         host = os.environ.get("BAMBU_MQTT_HOST")
         if not host:
@@ -36,7 +43,7 @@ class BambuAdapter(BaseAdapter):
         topic = os.environ.get("BAMBU_MQTT_TOPIC", "device/request")
         timeout_s = int(os.environ.get("BAMBU_MQTT_TIMEOUT_S", "60"))
 
-        client = mqtt.Client()
+        client = mqtt_client_factory()
         username = os.environ.get("BAMBU_MQTT_USERNAME")
         password = os.environ.get("BAMBU_MQTT_PASSWORD")
         if username:
@@ -52,6 +59,19 @@ class BambuAdapter(BaseAdapter):
 
         client.disconnect()
         return {"topic": topic, "published": published}
+
+    def discover_capabilities(self) -> Dict[str, Any]:
+        return {
+            "name": "BambuAdapter",
+            "actions": ["Transform", "Print", "Extrude", "Action"],
+            "features": ["gcode_generation", "mqtt_dispatch"],
+        }
+
+    def secure_config_schema(self) -> Dict[str, Any]:
+        return {
+            "required_env": [],
+            "optional_env": ["BAMBU_MQTT_HOST", "BAMBU_MQTT_USERNAME", "BAMBU_MQTT_PASSWORD"],
+        }
 
     @staticmethod
     def _to_gcode(protocol_data: Dict[str, Any]) -> List[str]:

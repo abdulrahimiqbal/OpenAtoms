@@ -1,12 +1,12 @@
-import sys
 import os
+import sys
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from openatoms.core import Matter, Container, Phase
 from openatoms.actions import Move, Transform
+from openatoms.adapters import BambuAdapter, OpentronsAdapter
+from openatoms.core import Container, Matter, Phase
 from openatoms.dag import ProtocolGraph
-from openatoms.adapters import OpentronsAdapter, BambuAdapter
 from openatoms.runner import ProtocolRunner
 
 source = Container("Vessel_A", max_volume_ml=1000, max_temp_c=120)

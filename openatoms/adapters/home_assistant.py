@@ -13,6 +13,9 @@ from .base import BaseAdapter
 class HomeAssistantAdapter(BaseAdapter):
     """Map DAG actions to Home Assistant service invocations."""
 
+    def __init__(self, *, urlopen_func=None):
+        self._urlopen = urlopen_func or request.urlopen
+
     def execute(self, dag_json: Any) -> Dict[str, Any]:
         protocol_data = self._prepare_payload(dag_json)
         service_calls = self._map_service_calls(protocol_data)
@@ -41,9 +44,22 @@ class HomeAssistantAdapter(BaseAdapter):
         body = json.dumps(service_call.get("data", {})).encode("utf-8")
 
         req = request.Request(endpoint, data=body, headers=headers, method="POST")
-        with request.urlopen(req, timeout=timeout_s) as resp:  # noqa: S310
+        with self._urlopen(req, timeout=timeout_s) as resp:  # noqa: S310
             raw = resp.read().decode("utf-8", errors="replace")
             return {"status_code": resp.status, "body": raw}
+
+    def discover_capabilities(self) -> Dict[str, Any]:
+        return {
+            "name": "HomeAssistantAdapter",
+            "actions": ["Move", "Transform", "Action"],
+            "features": ["service_mapping", "rest_dispatch"],
+        }
+
+    def secure_config_schema(self) -> Dict[str, Any]:
+        return {
+            "required_env": [],
+            "optional_env": ["HOME_ASSISTANT_URL", "HOME_ASSISTANT_TOKEN"],
+        }
 
     def _map_service_calls(self, protocol_data: Dict[str, Any]) -> List[Dict[str, Any]]:
         calls: List[Dict[str, Any]] = []
@@ -56,7 +72,9 @@ class HomeAssistantAdapter(BaseAdapter):
 
             if action == "Move":
                 domain, service = self._split_service(default_move_service)
-                entity_id = params.get("entity_id") or os.environ.get("HOME_ASSISTANT_MOVE_ENTITY_ID")
+                entity_id = params.get("entity_id") or os.environ.get(
+                    "HOME_ASSISTANT_MOVE_ENTITY_ID"
+                )
                 data: Dict[str, Any] = {}
                 if entity_id:
                     data["entity_id"] = entity_id

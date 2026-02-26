@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openatoms.dev/schema/ir-1.1.0.schema.json",
+  "title": "OpenAtoms IR",
+  "type": "object",
+  "required": [
+    "protocol_name",
+    "ir_version",
+    "schema_version",
+    "steps",
+    "references"
+  ],
+  "properties": {
+    "protocol_name": { "type": "string", "minLength": 1 },
+    "ir_version": { "type": "string", "const": "1.1.0" },
+    "schema_version": { "type": "string", "const": "1.1.0" },
+    "error_contract_version": { "type": "string" },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["step", "step_id", "action_type", "parameters", "depends_on", "resources"],
+        "properties": {
+          "step": { "type": "integer", "minimum": 1 },
+          "step_id": { "type": "string", "minLength": 1 },
+          "action_type": { "type": "string", "minLength": 1 },
+          "parameters": { "type": "object" },
+          "depends_on": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "resources": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "references": {
+      "type": "object",
+      "required": ["containers", "materials"],
+      "properties": {
+        "containers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "name", "max_volume_ml", "max_temp_c", "min_temp_c"],
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "max_volume_ml": { "type": "number", "minimum": 0 },
+              "max_temp_c": { "type": "number" },
+              "min_temp_c": { "type": "number" }
+            },
+            "additionalProperties": true
+          }
+        },
+        "materials": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "name", "phase", "volume_ml", "temp_c"],
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "phase": { "type": "string" },
+              "volume_ml": { "type": "number", "minimum": 0 },
+              "temp_c": { "type": "number" },
+              "hazard_class": { "type": "string" }
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

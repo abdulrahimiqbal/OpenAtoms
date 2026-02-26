@@ -28,6 +28,7 @@ def _state_observation_json(
 ) -> str:
     payload = {
         "type": "StateObservation",
+        "schema_version": "1.0.0",
         "node": "Bio-Kinetic",
         "status": status,
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
@@ -153,4 +154,3 @@ class OpentronsSimValidator:
             "error": None,
             "run_log": run_log,
         }
-

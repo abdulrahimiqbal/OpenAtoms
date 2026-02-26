@@ -13,6 +13,9 @@ from .base import BaseAdapter
 class OpentronsAdapter(BaseAdapter):
     """Translate OpenAtoms DAG steps into an Opentrons Python protocol."""
 
+    def __init__(self, *, urlopen_func=None):
+        self._urlopen = urlopen_func or request.urlopen
+
     def execute(self, dag_json: Any) -> Dict[str, Any]:
         protocol_data = self._prepare_payload(dag_json)
         script = self._build_protocol_script(protocol_data)
@@ -46,9 +49,27 @@ class OpentronsAdapter(BaseAdapter):
         ).encode("utf-8")
 
         req = request.Request(endpoint, data=body, headers=headers, method="POST")
-        with request.urlopen(req, timeout=timeout_s) as resp:  # noqa: S310
+        with self._urlopen(req, timeout=timeout_s) as resp:  # noqa: S310
             raw = resp.read().decode("utf-8", errors="replace")
             return {"status_code": resp.status, "body": raw}
+
+    def discover_capabilities(self) -> Dict[str, Any]:
+        return {
+            "name": "OpentronsAdapter",
+            "actions": ["Move", "Transform"],
+            "features": ["protocol_script", "http_post", "health_check"],
+        }
+
+    def health_check(self) -> Dict[str, Any]:
+        base = super().health_check()
+        base["robot_url_configured"] = bool(os.environ.get("OPENTRONS_ROBOT_URL"))
+        return base
+
+    def secure_config_schema(self) -> Dict[str, Any]:
+        return {
+            "required_env": [],
+            "optional_env": ["OPENTRONS_ROBOT_URL", "OPENTRONS_API_TOKEN"],
+        }
 
     @staticmethod
     def _build_protocol_script(protocol_data: Dict[str, Any]) -> str:

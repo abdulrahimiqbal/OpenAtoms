@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import os
 from abc import ABC, abstractmethod
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 
 class BaseAdapter(ABC):
@@ -15,6 +15,18 @@ class BaseAdapter(ABC):
     def execute(self, dag_json: Any) -> Dict[str, Any]:
         """Execute a ProtocolGraph-like object against a hardware target."""
         raise NotImplementedError
+
+    def discover_capabilities(self) -> Dict[str, Any]:
+        """Return adapter capability metadata for compile/validation targeting."""
+        return {"actions": [], "features": [], "name": type(self).__name__}
+
+    def health_check(self) -> Dict[str, Any]:
+        """Return health details without mutating hardware state."""
+        return {"status": "ok", "adapter": type(self).__name__}
+
+    def secure_config_schema(self) -> Dict[str, Any]:
+        """Return required/optional secret configuration keys."""
+        return {"required_env": [], "optional_env": []}
 
     @staticmethod
     def _prepare_payload(dag_json: Any) -> Dict[str, Any]:
@@ -66,3 +78,19 @@ class BaseAdapter(ABC):
         if not isinstance(data, dict):
             raise ValueError(f"Environment variable {name} must contain a JSON object.")
         return data
+
+    @staticmethod
+    def _retry_count_from_env(name: str = "OPENATOMS_ADAPTER_RETRIES", default: int = 0) -> int:
+        raw = os.environ.get(name)
+        if raw is None:
+            return default
+        try:
+            parsed = int(raw)
+        except ValueError as exc:
+            raise ValueError(f"{name} must be an integer.") from exc
+        return max(0, parsed)
+
+    @staticmethod
+    def _required_env_from_pairs(required_pairs: List[tuple[str, Any]]) -> List[str]:
+        """Return names of missing required env vars from provided pairs."""
+        return [name for name, value in required_pairs if not value]

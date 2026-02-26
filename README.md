@@ -15,9 +15,9 @@ That gap is where physical hallucinations become expensive and dangerous. A plau
 OpenAtoms provides a hardware-agnostic, deterministic compiler that translates AI intent into physical execution:
 
 - Model physical entities with typed primitives (`Matter`, `Container`, `Action`).
-- Compile agent plans into deterministic protocol graphs (`ProtocolGraph`).
-- Validate constraints before execution with `dry_run()`.
-- Export a universal machine-readable protocol JSON for downstream hardware runtimes.
+- Compile agent plans into dependency-aware protocol graphs (`ProtocolGraph`).
+- Validate constraints before execution with deterministic `dry_run()`.
+- Export a versioned machine-readable IR JSON (`ir_version=1.1.0`) for downstream runtimes.
 
 ## The Tooling
 
@@ -25,7 +25,9 @@ OpenAtoms includes:
 
 - Built-in physics validation for volume, temperature, and operation safety checks.
 - Machine-readable agent feedback via structured `PhysicsError` payloads for self-correction loops.
+- Capability profiles, stable IDs, and typed unit conversions in the core model.
 - Universal hardware adapters that compile one validated protocol to multiple execution targets.
+- Provenance metadata (IR hash, correlation ID, simulator seed/version) on each run.
 
 ## Simulation Registry
 
@@ -78,6 +80,31 @@ python examples/hello_atoms.py
 python examples/openai_tool_calling.py
 python examples/research_loop.py
 ```
+
+## Onboarding Path
+
+1. `hello world`:
+```bash
+python examples/hello_atoms.py
+```
+
+2. `simulated run`:
+```bash
+python examples/openai_tool_calling.py
+```
+
+3. `real device run` translation:
+```bash
+python examples/basic_compilation.py
+```
+
+## Release and Trust Signals
+
+- Security policy: `SECURITY.md`
+- Contribution guide: `CONTRIBUTING.md`
+- Support channels: `SUPPORT.md`
+- Version history: `CHANGELOG.md`
+- Upgrade guidance: `UPGRADE.md`
 
 ## Repository Layout
 

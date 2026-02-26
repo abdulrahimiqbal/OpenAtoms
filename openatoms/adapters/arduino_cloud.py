@@ -13,6 +13,9 @@ from .base import BaseAdapter
 class ArduinoCloudAdapter(BaseAdapter):
     """Map DAG actions into Arduino Cloud variable updates."""
 
+    def __init__(self, *, urlopen_func=None):
+        self._urlopen = urlopen_func or request.urlopen
+
     def execute(self, dag_json: Any) -> Dict[str, Any]:
         protocol_data = self._prepare_payload(dag_json)
         updates = self._map_variable_updates(protocol_data)
@@ -39,13 +42,31 @@ class ArduinoCloudAdapter(BaseAdapter):
         body = json.dumps({"value": update["value"]}).encode("utf-8")
 
         req = request.Request(endpoint, data=body, headers=headers, method="PUT")
-        with request.urlopen(req, timeout=timeout_s) as resp:  # noqa: S310
+        with self._urlopen(req, timeout=timeout_s) as resp:  # noqa: S310
             raw = resp.read().decode("utf-8", errors="replace")
             return {
                 "status_code": resp.status,
                 "variable": update["variable"],
                 "body": raw,
             }
+
+    def discover_capabilities(self) -> Dict[str, Any]:
+        return {
+            "name": "ArduinoCloudAdapter",
+            "actions": ["Move", "Transform", "Action"],
+            "features": ["cloud_variable_mapping", "rest_publish"],
+        }
+
+    def secure_config_schema(self) -> Dict[str, Any]:
+        return {
+            "required_env": [],
+            "optional_env": [
+                "ARDUINO_IOT_ACCESS_TOKEN",
+                "ARDUINO_IOT_CLIENT_ID",
+                "ARDUINO_IOT_CLIENT_SECRET",
+                "ARDUINO_THING_ID",
+            ],
+        }
 
     def _map_variable_updates(self, protocol_data: Dict[str, Any]) -> List[Dict[str, Any]]:
         move_var = os.environ.get("ARDUINO_MOVE_VARIABLE", "pump_volume_ml")
@@ -116,7 +137,7 @@ class ArduinoCloudAdapter(BaseAdapter):
             headers={"Content-Type": "application/x-www-form-urlencoded"},
             method="POST",
         )
-        with request.urlopen(req, timeout=timeout_s) as resp:  # noqa: S310
+        with self._urlopen(req, timeout=timeout_s) as resp:  # noqa: S310
             raw = resp.read().decode("utf-8", errors="replace")
             payload = json.loads(raw)
             token = payload.get("access_token")

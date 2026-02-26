@@ -7,7 +7,6 @@ from openatoms.core import Container, Matter, Phase
 from openatoms.dag import ProtocolGraph
 from openatoms.exceptions import PhysicsError
 
-
 # Shared physical environment used by each simulated tool call.
 SOURCE = Container("Source_Vessel", max_volume_ml=1000, max_temp_c=120)
 DEST = Container("Dest_Vessel", max_volume_ml=50, max_temp_c=80)
@@ -38,11 +37,21 @@ def main() -> None:
     """Simulate a failing LLM tool call followed by a corrected retry."""
     hallucinated_input = [
         {"action": "Move", "amount_ml": 20},
-        {"action": "Transform", "parameter": "temperature_c", "target_value": 250.0, "duration_s": 60},
+        {
+            "action": "Transform",
+            "parameter": "temperature_c",
+            "target_value": 250.0,
+            "duration_s": 60,
+        },
     ]
     corrected_input = [
         {"action": "Move", "amount_ml": 20},
-        {"action": "Transform", "parameter": "temperature_c", "target_value": 75.0, "duration_s": 60},
+        {
+            "action": "Transform",
+            "parameter": "temperature_c",
+            "target_value": 75.0,
+            "duration_s": 60,
+        },
     ]
 
     print("--- SIMULATING LLM HALLUCINATION ---")

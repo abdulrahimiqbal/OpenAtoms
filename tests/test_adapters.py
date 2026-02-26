@@ -2,6 +2,7 @@ import json
 
 import pytest
 
+from openatoms.actions import Move
 from openatoms.adapters import (
     ArduinoCloudAdapter,
     BambuAdapter,
@@ -9,7 +10,6 @@ from openatoms.adapters import (
     OpentronsAdapter,
     ViamAdapter,
 )
-from openatoms.actions import Move
 from openatoms.core import Container, Matter, Phase
 from openatoms.dag import ProtocolGraph
 from openatoms.exceptions import CapacityExceededError
