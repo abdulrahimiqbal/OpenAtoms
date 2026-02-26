@@ -220,3 +220,178 @@ Skipping determinism check: optional dependency 'cantera' is not installed. Inst
 - Exactly one runtime IR schema resource is used: `openatoms/ir/schema_v1_1_0.json`.
 - Benchmarks are deterministic and include suite/injection metadata + interpretable metrics.
 - Simulator contracts are explicit, deterministic, and default to documented fail-closed behavior.
+
+## Stage 7: Four production blockers remediation (2026-02-26)
+
+### Blocker 1 — Unified IR runtime contract
+
+#### IR/schema inventory
+- `rg -n "schema|validate|jsonschema|openatoms/schemas|schema_v1_1_0" ...` call sites include:
+  - `openatoms/ir/__init__.py` (canonical load/validate path)
+  - `eval/run_benchmark.py` (schema metadata)
+  - `tests/test_ir_and_provenance.py`, `tests/test_packaging_install.py` (schema contract tests)
+- `openatoms/schemas/` does not exist.
+- `openatoms/ir.py` does not exist.
+
+#### Changes
+- Added canonical API function `get_schema_resource_name()` to `openatoms/ir/__init__.py`.
+- Kept `schema_resource_name()` as deprecated forwarding alias (DeprecationWarning).
+- Updated runtime call site in `eval/run_benchmark.py` to use `get_schema_resource_name()`.
+- Added/updated IR tests:
+  - `test_ir_schema_is_packaged()`
+  - `test_ir_single_source_of_truth()`
+  - legacy forwarding assertions via deprecation wrappers
+- Wheel smoke test now executes:
+  - `from openatoms.ir import load_schema, validate_ir`
+  - `print(load_schema()['$id'])`
+
+### Blocker 2 — Determinism CI enforcement
+
+#### Changes
+- Updated `scripts/verify_reproducibility.py`:
+  - honors `OPENATOMS_CI=1` as strict CI mode.
+  - missing cantera in strict CI returns nonzero with install hint.
+  - local skip remains explicit via `OPENATOMS_ALLOW_SKIP=1`.
+- Updated tests in `tests/test_verify_reproducibility_script.py`:
+  - `test_verify_reproducibility_ci_fails_without_cantera`
+  - `test_verify_reproducibility_local_can_skip`
+- Updated CI workflow `.github/workflows/pytest.yml`:
+  - `core` job installs `.[dev]`.
+  - new `determinism-cantera` job installs `.[dev,sim-cantera]`, sets `OPENATOMS_CI=1`, runs reproducibility script.
+
+### Blocker 3 — Benchmark artifact determinism + policy
+
+#### Changes
+- `eval/run_benchmark.py` now records stable metadata:
+  - `schema_resource`, `schema_version`, `repo_commit`, `timestamp_utc`, `date`.
+- Benchmark report generation remains single-source from `summary` object and now includes:
+  - N, seed, suite, injection probability, schema version/resource, timestamp, repo commit.
+- Deterministic writing preserved:
+  - `raw_runs.jsonl` line-wise canonical JSON
+  - `summary.json` sorted keys + stable indent + newline
+  - report deterministic markdown + trailing newline
+- Added tests:
+  - `test_benchmark_determinism`
+  - `test_benchmark_report_consistency`
+- Artifact policy switched to **Option A** (do not commit generated results):
+  - removed tracked `eval/results/summary.json` and `eval/results/BENCHMARK_REPORT.md`
+  - ignored generated benchmark files in `.gitignore`
+  - added docs example: `docs/BENCHMARK_REPORT_EXAMPLE.md`
+
+### Blocker 4 — Docs/examples drift
+
+#### Changes
+- Examples harness rewritten to enumerate and run all `examples/*.py` dynamically:
+  - `tests/test_examples_execution.py`
+  - dependency-aware skip for cantera examples.
+- README canonicalized to IR API name `get_schema_resource_name` and clarifies benchmark artifact policy.
+
+## Final verification command outputs
+
+Note: this environment does not provide `python` on PATH; commands were run via `.venv/bin/python` equivalent.
+
+### 1) `python -m pip install -e ".[dev]"`
+
+Command output (`stage0_logs/21_final_install_as_requested.log`):
+
+```text
+Obtaining file:///Users/rahim/Downloads/OpenAtoms
+Installing build dependencies: finished with status 'error'
+ERROR: Could not find a version that satisfies the requirement setuptools>=61.0
+ERROR: No matching distribution found for setuptools>=61.0
+exit_code=1
+```
+
+Offline-safe fallback executed:
+
+```text
+.venv/bin/python -m pip install -e ".[dev]" --no-build-isolation
+...
+Successfully installed openatoms-0.2.0
+exit_code=0
+```
+
+### 2) `pytest -q`
+
+Command output (`stage0_logs/22_final_pytest_q.log`):
+
+```text
+..................................................                       [100%]
+50 passed, 15 warnings in 21.40s
+exit_code=0
+```
+
+### 3) `python examples/hello_atoms.py`
+
+Command output (`stage0_logs/23_final_hello_atoms.log`):
+
+```text
+{
+  "ir_version": "1.1.0",
+  "protocol_name": "Hello_Atoms",
+  ...
+  "schema_version": "1.1.0"
+}
+exit_code=0
+```
+
+### 4) `python -m build`
+
+Command output (`stage0_logs/24_final_build_as_requested.log`):
+
+```text
+* Creating isolated environment: venv+pip...
+ERROR: Could not find a version that satisfies the requirement setuptools>=61.0
+ERROR: No matching distribution found for setuptools>=61.0
+exit_code=1
+```
+
+Offline-safe fallback executed:
+
+```text
+.venv/bin/python -m build --no-isolation
+...
+Successfully built openatoms-0.2.0.tar.gz and openatoms-0.2.0-py3-none-any.whl
+exit_code=0
+```
+
+### 5) Wheel smoke install test
+
+Automated command output (`stage0_logs/25_final_wheel_smoke.log`):
+
+```text
+.                                                                        [100%]
+1 passed, 10 warnings in 3.39s
+exit_code=0
+```
+
+### 6) `python -m eval.run_benchmark --seed 123 --n 200 --suite realistic`
+
+Command output (`stage0_logs/26_final_benchmark.log`):
+
+```text
+{
+  "n": 200,
+  "seed": 123,
+  "suite": {
+    "name": "realistic",
+    "injection_probability": 0.1
+  },
+  "schema_version": "1.1.0",
+  "schema_resource": "schema_v1_1_0.json",
+  "repo_commit": "135d6f24bc099504dcd1b0e957551f67a631933a",
+  "timestamp_utc": "2026-02-26T13:09:39-05:00",
+  "with_validators": {
+    "violation_rate": 0.0
+  }
+}
+exit_code=0
+```
+
+### 7) CI determinism enforcement
+
+- Workflow updated at `.github/workflows/pytest.yml` with required job:
+  - `determinism-cantera`
+  - installs `pip install -e ".[dev,sim-cantera]"`
+  - sets `OPENATOMS_CI=1`
+  - runs `python scripts/verify_reproducibility.py`

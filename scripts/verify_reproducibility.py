@@ -14,6 +14,9 @@ SCRIPT = ROOT / "examples" / "node_b_thermo_kinetic.py"
 
 
 def _is_ci() -> bool:
+    ci_flag = os.getenv("OPENATOMS_CI")
+    if ci_flag is not None:
+        return ci_flag.strip().lower() in {"1", "true", "yes", "on"}
     return os.getenv("CI", "").strip().lower() in {"1", "true", "yes", "on"}
 
 
@@ -30,14 +33,14 @@ def _cantera_available() -> bool:
 def _handle_missing_cantera() -> int:
     message = (
         "Determinism check unavailable: optional dependency 'cantera' is not installed. "
-        "Install with: pip install \".[sim-cantera]\""
+        "Install with: pip install \".[sim-cantera]\"."
     )
-    if _allow_skip() and not _is_ci():
+    if _is_ci():
+        print(f"{message} Failing because OPENATOMS_CI=1 requires deterministic thermo validation.")
+        return 1
+    if _allow_skip():
         print(f"{message} Skipping because OPENATOMS_ALLOW_SKIP=1.")
         return 0
-    if _is_ci():
-        print(f"{message} Failing in CI because deterministic thermo validation is required.")
-        return 2
     print(
         f"{message} Set OPENATOMS_ALLOW_SKIP=1 to skip locally, "
         "or install cantera to run the determinism check."

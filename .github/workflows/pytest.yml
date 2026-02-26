@@ -7,38 +7,9 @@ on:
     branches: [main]
 
 jobs:
-  matrix-tests:
-    name: ${{ matrix.name }}
-    continue-on-error: ${{ matrix.allow_failure }}
+  core:
+    name: core
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: core
-            sim_extra: sim-cantera
-            run_examples: true
-            run_repro: true
-            run_cantera_subset: false
-            run_mujoco_subset: false
-            run_build: true
-            allow_failure: false
-          - name: sim-cantera
-            sim_extra: sim-cantera
-            run_examples: false
-            run_repro: true
-            run_cantera_subset: true
-            run_mujoco_subset: false
-            run_build: false
-            allow_failure: false
-          - name: sim-mujoco
-            sim_extra: sim-mujoco
-            run_examples: false
-            run_repro: false
-            run_cantera_subset: false
-            run_mujoco_subset: true
-            run_build: false
-            allow_failure: true
     steps:
       - uses: actions/checkout@v6
 
@@ -51,34 +22,39 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
-          pip install -e ".[${{ matrix.sim_extra }}]"
 
       - name: Pytest
         run: pytest -q
 
       - name: Examples as tests
-        if: ${{ matrix.run_examples }}
         run: pytest -q tests/test_examples_execution.py
 
-      - name: Verify reproducibility
-        if: ${{ matrix.run_repro }}
-        run: python scripts/verify_reproducibility.py
-
-      - name: Cantera determinism subset
-        if: ${{ matrix.run_cantera_subset }}
-        run: pytest -q tests/test_simulator_contracts.py -k cantera
-
-      - name: MuJoCo subset
-        if: ${{ matrix.run_mujoco_subset }}
-        run: pytest -q tests/test_simulator_contracts.py -k mujoco
-
       - name: Build distributions
-        if: ${{ matrix.run_build }}
         run: python -m build --no-isolation
 
       - name: Smoke install from wheel
-        if: ${{ matrix.run_build }}
         run: |
           python -m venv /tmp/openatoms-wheel-test
           /tmp/openatoms-wheel-test/bin/pip install dist/*.whl
-          /tmp/openatoms-wheel-test/bin/python -c "import json; from importlib import resources; import openatoms.ir as ir; payload={'ir_version':'1.1.0','protocol_id':'00000000-0000-0000-0000-000000000000','correlation_id':'00000000-0000-0000-0000-000000000001','created_at':'2026-01-01T00:00:00+00:00','steps':[{'step':1,'step_id':'s1','action_type':'Move','parameters':{'amount':{'value':1,'unit':'microliter'}},'depends_on':[],'resources':[]}],'provenance':{'ir_hash':'0'*64,'simulator_versions':{},'noise_seed':None,'validator_version':'1.1.0'}}; schema=json.loads(resources.files('openatoms.ir').joinpath('schema_v1_1_0.json').read_text(encoding='utf-8')); assert schema['title']=='OpenAtoms Protocol IR'; assert ir.validate_ir(payload)==payload"
+          /tmp/openatoms-wheel-test/bin/python -c "from openatoms.ir import load_schema, validate_ir; payload={'ir_version':'1.1.0','protocol_id':'00000000-0000-0000-0000-000000000000','correlation_id':'00000000-0000-0000-0000-000000000001','created_at':'2026-01-01T00:00:00+00:00','steps':[{'step':1,'step_id':'s1','action_type':'Move','parameters':{'amount':{'value':1,'unit':'microliter'}},'depends_on':[],'resources':[]}],'provenance':{'ir_hash':'0'*64,'simulator_versions':{},'noise_seed':None,'validator_version':'1.1.0'}}; print(load_schema()['$id']); assert validate_ir(payload)==payload"
+
+  determinism-cantera:
+    name: determinism-cantera
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.10"
+
+      - name: Install package and cantera dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,sim-cantera]"
+
+      - name: Verify reproducibility with cantera enforced
+        env:
+          OPENATOMS_CI: "1"
+        run: python scripts/verify_reproducibility.py

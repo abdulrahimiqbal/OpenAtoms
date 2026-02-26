@@ -40,7 +40,7 @@ PY
 
 ## IR Schema and Validation Contract
 
-- Canonical runtime interface: `openatoms.ir.validate_ir`, `openatoms.ir.load_schema`, `openatoms.ir.schema_version`, `openatoms.ir.schema_resource_name`.
+- Canonical runtime interface: `openatoms.ir.validate_ir`, `openatoms.ir.load_schema`, `openatoms.ir.schema_version`, `openatoms.ir.get_schema_resource_name`.
 - Canonical schema resource: `openatoms/ir/schema_v1_1_0.json`.
 - Legacy schema helpers (`get_schema_version`, `get_schema_path`, `schema_path`) are deprecated wrappers.
 - Invalid payloads return stable `IRValidationError` codes (`IR_TYPE`, `IR_VERSION`, `IR_MISSING_FIELD`, `IR_SCHEMA_VALIDATION`).
@@ -65,7 +65,7 @@ python scripts/verify_reproducibility.py
 ```
 
 If `cantera` is missing:
-- CI exits nonzero.
+- CI (`OPENATOMS_CI=1`) exits nonzero.
 - Local runs may skip only with `OPENATOMS_ALLOW_SKIP=1`.
 
 ## Simulator Safety Contracts
@@ -79,6 +79,9 @@ If `cantera` is missing:
 ```bash
 python -m eval.run_benchmark --seed 123 --n 200 --suite realistic --violation-probability 0.1
 ```
+
+Generated outputs are written to `eval/results/` and are not committed to git. See
+[`docs/BENCHMARK_REPORT_EXAMPLE.md`](docs/BENCHMARK_REPORT_EXAMPLE.md) for an example layout.
 
 Benchmark suites:
 - `realistic`: plausible operating ranges, low violation injection.

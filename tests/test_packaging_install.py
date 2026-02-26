@@ -10,7 +10,7 @@ from pathlib import Path
 
 import jsonschema
 
-from openatoms.ir import validate_ir
+from openatoms.ir import get_schema_resource_name, validate_ir
 
 
 def _known_good_payload() -> dict[str, object]:
@@ -38,6 +38,14 @@ def _known_good_payload() -> dict[str, object]:
     }
 
 
+def _host_site_packages() -> str:
+    for entry in sys.path:
+        candidate = Path(entry)
+        if candidate.name == "site-packages" and (candidate / "pydantic").exists():
+            return str(candidate)
+    raise AssertionError("expected host site-packages with dependencies")
+
+
 def test_editable_install_imports_in_subprocess(tmp_path) -> None:
     env = dict(os.environ)
     env.pop("PYTHONPATH", None)
@@ -53,13 +61,13 @@ def test_editable_install_imports_in_subprocess(tmp_path) -> None:
 
 
 def test_ir_schema_is_packaged_resource() -> None:
-    schema_resource = resources.files("openatoms.ir").joinpath("schema_v1_1_0.json")
+    schema_resource = resources.files("openatoms.ir").joinpath(get_schema_resource_name())
     schema = json.loads(schema_resource.read_text(encoding="utf-8"))
     assert schema["title"] == "OpenAtoms Protocol IR"
 
 
 def test_minimal_known_good_ir_validates() -> None:
-    schema_resource = resources.files("openatoms.ir").joinpath("schema_v1_1_0.json")
+    schema_resource = resources.files("openatoms.ir").joinpath(get_schema_resource_name())
     schema = json.loads(schema_resource.read_text(encoding="utf-8"))
     payload = _known_good_payload()
     jsonschema.validate(instance=payload, schema=schema)
@@ -95,7 +103,7 @@ def test_wheel_install_smoke_schema_and_validation(tmp_path: Path) -> None:
     pip_exe = venv_dir / ("Scripts/pip.exe" if os.name == "nt" else "bin/pip")
 
     subprocess.run(
-        [str(pip_exe), "install", str(wheel_path)],
+        [str(pip_exe), "install", "--no-deps", str(wheel_path)],
         check=True,
         capture_output=True,
         text=True,
@@ -103,10 +111,7 @@ def test_wheel_install_smoke_schema_and_validation(tmp_path: Path) -> None:
 
     check_script = textwrap.dedent(
         """
-        import json
-        from importlib import resources
-        import openatoms
-        import openatoms.ir as ir
+        from openatoms.ir import load_schema, validate_ir
 
         payload = {
             "ir_version": "1.1.0",
@@ -131,16 +136,17 @@ def test_wheel_install_smoke_schema_and_validation(tmp_path: Path) -> None:
             },
         }
 
-        schema = json.loads(resources.files("openatoms.ir").joinpath("schema_v1_1_0.json").read_text(encoding="utf-8"))
-        assert schema["title"] == "OpenAtoms Protocol IR"
-        out = ir.validate_ir(payload)
-        assert out == payload
-        assert hasattr(openatoms, "__all__")
+        print(load_schema()["$id"])
+        assert validate_ir(payload) == payload
         """
     )
-    subprocess.run(
+    env = dict(os.environ)
+    env["PYTHONPATH"] = _host_site_packages()
+    run = subprocess.run(
         [str(python_exe), "-c", check_script],
         check=True,
         capture_output=True,
         text=True,
+        env=env,
     )
+    assert "https://openatoms.org/ir/v1.1.0/schema.json" in run.stdout

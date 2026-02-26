@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -12,7 +13,7 @@ from eval.generate_protocols import generate_protocol_batch
 from eval.run_benchmark import run_benchmark
 
 
-def test_benchmark_artifacts_are_byte_deterministic(tmp_path: Path) -> None:
+def test_benchmark_determinism(tmp_path: Path) -> None:
     run1 = tmp_path / "run1"
     run2 = tmp_path / "run2"
 
@@ -22,6 +23,32 @@ def test_benchmark_artifacts_are_byte_deterministic(tmp_path: Path) -> None:
     assert (run1 / "summary.json").read_bytes() == (run2 / "summary.json").read_bytes()
     assert (run1 / "BENCHMARK_REPORT.md").read_bytes() == (run2 / "BENCHMARK_REPORT.md").read_bytes()
     assert (run1 / "raw_runs.jsonl").read_bytes() == (run2 / "raw_runs.jsonl").read_bytes()
+
+
+def test_benchmark_report_consistency(tmp_path: Path) -> None:
+    output_dir = tmp_path / "consistency"
+    run_benchmark(seed=321, n=30, suite="realistic", violation_probability=0.15, output_dir=output_dir)
+
+    summary = json.loads((output_dir / "summary.json").read_text(encoding="utf-8"))
+    report = (output_dir / "BENCHMARK_REPORT.md").read_text(encoding="utf-8")
+
+    baseline_match = re.search(
+        r"\| baseline \([^)]+\) \| \d+ / \d+ \| ([0-9.]+) \| \[([0-9.]+), ([0-9.]+)\] \|",
+        report,
+    )
+    validated_match = re.search(
+        r"\| with_validators \| \d+ / \d+ \| ([0-9.]+) \| \[([0-9.]+), ([0-9.]+)\] \|",
+        report,
+    )
+
+    assert baseline_match is not None
+    assert validated_match is not None
+    assert baseline_match.group(1) == f"{summary['baseline']['violation_rate']:.6f}"
+    assert baseline_match.group(2) == f"{summary['baseline']['violation_rate_ci95'][0]:.6f}"
+    assert baseline_match.group(3) == f"{summary['baseline']['violation_rate_ci95'][1]:.6f}"
+    assert validated_match.group(1) == f"{summary['with_validators']['violation_rate']:.6f}"
+    assert validated_match.group(2) == f"{summary['with_validators']['violation_rate_ci95'][0]:.6f}"
+    assert validated_match.group(3) == f"{summary['with_validators']['violation_rate_ci95'][1]:.6f}"
 
 
 def test_validators_do_not_increase_violations() -> None:
@@ -42,6 +69,9 @@ def test_report_contains_required_stage4_fields(tmp_path: Path) -> None:
     assert "- Seed:" in report
     assert "- Suite definition:" in report
     assert "- Injection probability:" in report
+    assert "- Schema version:" in report
+    assert "- Timestamp (UTC):" in report
+    assert "- Repo commit:" in report
     assert "- Baseline:" in report
     assert "## Detection" in report
     assert "## Correction" in report

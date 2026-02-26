@@ -4,11 +4,10 @@ import argparse
 import json
 import math
 import subprocess
-from datetime import date
 from pathlib import Path
 from typing import Any
 
-from openatoms.ir import schema_resource_name, schema_version
+from openatoms.ir import get_schema_resource_name, schema_version
 
 from .baselines import NO_VALIDATION_BASELINE, apply_no_validation
 from .evaluate import apply_validator_repairs, evaluate_protocol, intent_proxy_preserved
@@ -28,9 +27,10 @@ def wilson_interval(successes: int, total: int, z: float = 1.96) -> tuple[float,
     return (max(0.0, low), min(1.0, high))
 
 
-def _git_info(repo_root: Path) -> tuple[str, str]:
+def _git_info(repo_root: Path) -> tuple[str, str, str]:
     commit = "unknown"
-    commit_date = date(1970, 1, 1).isoformat()
+    commit_date = "unknown"
+    commit_timestamp = "unknown"
     commit_cmd = subprocess.run(
         ["git", "rev-parse", "HEAD"],
         cwd=repo_root,
@@ -52,7 +52,18 @@ def _git_info(repo_root: Path) -> tuple[str, str]:
         parsed = date_cmd.stdout.strip()
         if parsed:
             commit_date = parsed
-    return commit, commit_date
+    timestamp_cmd = subprocess.run(
+        ["git", "show", "-s", "--format=%cI", "HEAD"],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if timestamp_cmd.returncode == 0:
+        parsed = timestamp_cmd.stdout.strip()
+        if parsed:
+            commit_timestamp = parsed
+    return commit, commit_date, commit_timestamp
 
 
 def _rounded_pair(values: tuple[float, float]) -> list[float]:
@@ -82,6 +93,7 @@ def _write_report(path: Path, summary: dict[str, Any]) -> None:
         f"- Injection method: {summary['suite']['injection_method']}",
         f"- Schema version: {summary['schema_version']}",
         f"- Schema resource: {summary['schema_resource']}",
+        f"- Timestamp (UTC): {summary['timestamp_utc']}",
         f"- Baseline: {baseline['description']}",
         f"- Violation definition: {summary['violation_definition']}",
         "",
@@ -117,7 +129,7 @@ def _write_report(path: Path, summary: dict[str, Any]) -> None:
         f"- Intent-preservation rate: {correction['intent_preservation_rate']:.6f} (95% CI [{correction['intent_preservation_rate_ci95'][0]:.6f}, {correction['intent_preservation_rate_ci95'][1]:.6f}])",
         "",
         f"- Relative violation reduction: {summary['relative_violation_reduction']:.6f}",
-        f"- Git commit: {summary['git_commit']}",
+        f"- Repo commit: {summary['repo_commit']}",
         "",
         "## Reproduction",
         "",
@@ -129,7 +141,7 @@ def _write_report(path: Path, summary: dict[str, Any]) -> None:
         ),
         "",
     ]
-    path.write_text("\n".join(lines), encoding="utf-8")
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def run_benchmark(
@@ -214,7 +226,7 @@ def run_benchmark(
     correction_success_rate = _safe_rate(correction_successes, correction_attempts)
     intent_preservation_rate = _safe_rate(intent_preserved_count, n)
 
-    git_commit, commit_date = _git_info(repo_root)
+    git_commit, commit_date, commit_timestamp = _git_info(repo_root)
     summary = {
         "baseline": {
             "description": NO_VALIDATION_BASELINE.description,
@@ -244,10 +256,12 @@ def run_benchmark(
         },
         "git_commit": git_commit,
         "n": n,
+        "repo_commit": git_commit,
         "relative_violation_reduction": round(reduction, 6),
-        "schema_resource": schema_resource_name(),
+        "schema_resource": get_schema_resource_name(),
         "schema_version": schema_version(),
         "seed": seed,
+        "timestamp_utc": commit_timestamp,
         "suite": {
             "description": generation.suite_description,
             "injection_method": generation.injection_method,

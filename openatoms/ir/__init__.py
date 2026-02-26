@@ -58,19 +58,29 @@ def schema_version() -> str:
     return IR_SCHEMA_VERSION
 
 
-def schema_resource_name() -> str:
+def get_schema_resource_name() -> str:
     """Return canonical schema resource filename."""
     return SCHEMA_FILENAME
 
 
 def _schema_resource():
-    return resources.files("openatoms.ir").joinpath(schema_resource_name())
+    return resources.files("openatoms.ir").joinpath(get_schema_resource_name())
+
+
+def schema_resource_name() -> str:
+    """Deprecated schema resource helper."""
+    warnings.warn(
+        "openatoms.ir.schema_resource_name() is deprecated; use openatoms.ir.get_schema_resource_name().",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return get_schema_resource_name()
 
 
 def get_schema_path() -> Path:
     """Deprecated filesystem-path helper for schema resource."""
     warnings.warn(
-        "openatoms.ir.get_schema_path() is deprecated; use openatoms.ir.schema_resource_name().",
+        "openatoms.ir.get_schema_path() is deprecated; use openatoms.ir.get_schema_resource_name().",
         DeprecationWarning,
         stacklevel=2,
     )
@@ -206,6 +216,7 @@ __all__ = [
     "IRValidationError",
     "SUPPORTED_IR_VERSIONS",
     "canonical_json",
+    "get_schema_resource_name",
     "get_schema_path",
     "get_schema_version",
     "ir_hash",
