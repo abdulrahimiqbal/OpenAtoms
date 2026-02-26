@@ -5,24 +5,52 @@ import json
 from openatoms.actions import Move, Transform
 from openatoms.core import Container, Matter, Phase
 from openatoms.dag import ProtocolGraph
-from openatoms.exceptions import PhysicsError
+from openatoms.errors import PhysicsError
+from openatoms.units import Q_
 
-# Shared physical environment used by each simulated tool call.
-SOURCE = Container("Source_Vessel", max_volume_ml=1000, max_temp_c=120)
-DEST = Container("Dest_Vessel", max_volume_ml=50, max_temp_c=80)
-SOURCE.contents.append(Matter("H2O", Phase.LIQUID, mass_g=500, volume_ml=500))
+
+def _build_environment() -> tuple[Container, Container]:
+    source = Container(
+        id="source_vessel",
+        label="Source_Vessel",
+        max_volume=Q_(1000, "milliliter"),
+        max_temp=Q_(120, "degC"),
+        min_temp=Q_(0, "degC"),
+    )
+    destination = Container(
+        id="dest_vessel",
+        label="Dest_Vessel",
+        max_volume=Q_(50, "milliliter"),
+        max_temp=Q_(80, "degC"),
+        min_temp=Q_(0, "degC"),
+    )
+    source.contents.append(
+        Matter(
+            name="H2O",
+            phase=Phase.LIQUID,
+            mass=Q_(500, "gram"),
+            volume=Q_(500, "milliliter"),
+        )
+    )
+    return source, destination
 
 
 def execute_ai_protocol(ai_generated_steps: list[dict]) -> str:
     """Execute AI-generated steps and return success JSON or structured physics error."""
+    source, destination = _build_environment()
     graph = ProtocolGraph("AI_Agent_Run")
     try:
         for step in ai_generated_steps:
             if step["action"] == "Move":
-                graph.add_step(Move(SOURCE, DEST, step["amount_ml"]))
+                graph.add_step(Move(source, destination, Q_(step["amount_ml"], "milliliter")))
             elif step["action"] == "Transform":
                 graph.add_step(
-                    Transform(DEST, step["parameter"], step["target_value"], step["duration_s"])
+                    Transform(
+                        destination,
+                        step["parameter"],
+                        Q_(step["target_value_c"], "degC"),
+                        Q_(step["duration_s"], "second"),
+                    )
                 )
 
         graph.dry_run()
@@ -39,8 +67,8 @@ def main() -> None:
         {"action": "Move", "amount_ml": 20},
         {
             "action": "Transform",
-            "parameter": "temperature_c",
-            "target_value": 250.0,
+            "parameter": "temperature",
+            "target_value_c": 250.0,
             "duration_s": 60,
         },
     ]
@@ -48,8 +76,8 @@ def main() -> None:
         {"action": "Move", "amount_ml": 20},
         {
             "action": "Transform",
-            "parameter": "temperature_c",
-            "target_value": 75.0,
+            "parameter": "temperature",
+            "target_value_c": 75.0,
             "duration_s": 60,
         },
     ]

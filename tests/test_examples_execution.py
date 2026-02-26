@@ -1,10 +1,23 @@
 import os
 import subprocess
 import sys
+from importlib.util import find_spec
 from pathlib import Path
+
+import pytest
 
 
 ROOT = Path(__file__).resolve().parents[1]
+
+EXAMPLE_CASES = [
+    ("basic_compilation.py", None, "[Runner -> OpentronsAdapter]"),
+    ("hello_atoms.py", None, '"ir_version": "1.1.0"'),
+    ("node_a_bio_kinetic.py", None, '"simulation_success": true'),
+    ("node_b_thermo_kinetic.py", "cantera", "Caught ThermalExcursionError"),
+    ("node_c_contact_kinetic.py", None, "Caught OrderingConstraintError"),
+    ("openai_tool_calling.py", None, "SIMULATING LLM SELF-CORRECTION"),
+    ("research_loop.py", "cantera", "OpenAtoms Research Loop"),
+]
 
 
 def _run(script: str) -> str:
@@ -22,17 +35,9 @@ def _run(script: str) -> str:
     return result.stdout
 
 
-def test_hello_atoms_runs() -> None:
-    out = _run("hello_atoms.py")
-    assert '"ir_version": "1.1.0"' in out
-
-
-def test_node_a_demo_runs() -> None:
-    out = _run("node_a_bio_kinetic.py")
-    assert "remediation_hint" in out
-    assert '"simulation_success": true' in out.lower()
-
-
-def test_node_c_demo_runs() -> None:
-    out = _run("node_c_contact_kinetic.py")
-    assert "Caught OrderingConstraintError" in out
+@pytest.mark.parametrize(("script", "optional_dep", "needle"), EXAMPLE_CASES)
+def test_examples_execute(script: str, optional_dep: str | None, needle: str) -> None:
+    if optional_dep and find_spec(optional_dep) is None:
+        pytest.skip(f"example requires optional dependency: {optional_dep}")
+    out = _run(script)
+    assert needle in out

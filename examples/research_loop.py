@@ -2,16 +2,19 @@
 
 from __future__ import annotations
 
-from openatoms.exceptions import SimulationDependencyError, StructuralIntegrityError
-from openatoms.sim.registry.kinetics_sim import Vessel, VirtualReactor
+import json
+
+from openatoms.exceptions import SimulationDependencyError
+from openatoms.sim.registry.kinetics_sim import VirtualReactor
+
+SAFE_PEAK_TEMPERATURE_K = 1500.0
 
 
 def main() -> None:
     reactor = VirtualReactor()
-    vessel = Vessel(name="Reactor_Vessel_01", burst_pressure_pa=125000.0)
 
-    # Agent proposal starts aggressively at 500K.
-    proposal = {"temperature_k": 500.0, "flow_rate_slpm": 1.0}
+    # Agent proposal starts aggressively and self-corrects from feedback.
+    proposal = {"temperature_k": 1200.0, "residence_time_s": 0.02}
 
     print("== OpenAtoms Research Loop ==")
     print(f"Initial proposal: {proposal}")
@@ -21,20 +24,30 @@ def main() -> None:
         try:
             result = reactor.simulate_hydrogen_oxygen_combustion(
                 initial_temp_k=proposal["temperature_k"],
-                flow_rate_slpm=proposal["flow_rate_slpm"],
-                residence_time_s=0.02,
-                vessel=vessel,
+                residence_time_s=proposal["residence_time_s"],
             )
-            print("Simulation succeeded. StateObservation JSON:")
-            print(result["state_observation_json"])
-            return
-        except StructuralIntegrityError as exc:
-            print("StructuralIntegrityError caught:")
-            print(exc.to_agent_payload())
+            trajectory = result["trajectory"]
+            peak_temperature = max(trajectory.temperatures_k)
+            if peak_temperature <= SAFE_PEAK_TEMPERATURE_K:
+                print("Simulation succeeded. StateObservation JSON:")
+                print(result["state_observation_json"])
+                return
 
-            # Agent "researches" a safer policy: lower temperature and slower flow.
-            proposal["temperature_k"] = max(320.0, proposal["temperature_k"] - 40.0)
-            proposal["flow_rate_slpm"] = max(0.2, proposal["flow_rate_slpm"] * 0.7)
+            print("Safety gate violation caught:")
+            print(
+                json.dumps(
+                    {
+                        "error_code": "THM_001",
+                        "description": "Peak temperature exceeds safe process envelope.",
+                        "actual_peak_temperature_k": peak_temperature,
+                        "limit_temperature_k": SAFE_PEAK_TEMPERATURE_K,
+                        "remediation_hint": "Lower initial temperature before execution.",
+                    },
+                    indent=2,
+                    sort_keys=True,
+                )
+            )
+            proposal["temperature_k"] = max(320.0, proposal["temperature_k"] - 120.0)
             print(f"Revised proposal: {proposal}")
         except SimulationDependencyError as exc:
             print(exc.to_agent_payload())
@@ -45,4 +58,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

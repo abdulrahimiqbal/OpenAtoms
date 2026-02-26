@@ -92,3 +92,27 @@ Verification commands and outcomes:
 - `. .venv/bin/activate && python examples/basic_compilation.py` -> fails (tracked under Issue 3 API drift)
 - `. .venv/bin/activate && python examples/openai_tool_calling.py` -> fails (tracked under Issue 3 API drift)
 - `. .venv/bin/activate && python scripts/verify_reproducibility.py` -> success
+
+## Issue 3 updates (API drift: examples/tests/CI sync)
+
+Changes made:
+
+- Updated drifted examples to current API and unit-safe quantities:
+  - `examples/basic_compilation.py`
+  - `examples/openai_tool_calling.py`
+  - `examples/research_loop.py`
+- Added comprehensive subprocess example execution test coverage for all scripts in `examples/`:
+  - `tests/test_examples_execution.py` now parametrizes all examples.
+  - Optional-dependency examples (`cantera`) are skipped when not installed.
+- Updated reproducibility script to be optional-dependency aware:
+  - `scripts/verify_reproducibility.py` now skips cleanly with install hint when `cantera` is missing.
+- Simplified CI workflow and aligned it with package declarations:
+  - `.github/workflows/pytest.yml` now installs with `pip install -e ".[dev]"`.
+  - CI runs `ruff`, `mypy`, `pytest`, and `python scripts/verify_reproducibility.py`.
+  - Removed duplicate/competing workflow setup blocks.
+
+Verification commands and outcomes:
+
+- `. .venv/bin/activate && python -m pytest -q` -> `28 passed, 10 warnings`
+- `. .venv/bin/activate && for f in examples/*.py; do python "$f"; done` -> all examples exit `0`
+- `. .venv/bin/activate && python scripts/verify_reproducibility.py` -> `Determinism check passed: Node B output identical across 3 runs.`

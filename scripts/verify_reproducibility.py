@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 import os
 import subprocess
 import sys
@@ -13,6 +14,13 @@ SCRIPT = ROOT / "examples" / "node_b_thermo_kinetic.py"
 
 
 def main() -> None:
+    if importlib.util.find_spec("cantera") is None:
+        print(
+            "Skipping determinism check: optional dependency 'cantera' is not installed. "
+            "Install with: pip install \".[sim-cantera]\""
+        )
+        return
+
     outputs: list[bytes] = []
 
     env = dict(os.environ)
