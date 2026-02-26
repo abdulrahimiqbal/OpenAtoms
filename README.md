@@ -1,6 +1,6 @@
 # OpenAtoms
 
-## What It Does (One Paragraph, No Marketing)
+## What It Does
 OpenAtoms takes an AI-generated protocol plan, compiles it into a deterministic `ProtocolGraph`, validates hard physical invariants (volume, thermal safety, and mass conservation), optionally runs domain simulators (bio-kinetic, thermo-kinetic, contact-kinetic), and emits versioned, hash-addressable IR JSON for reproducible execution and agent feedback loops.
 
 ## Why It Matters
