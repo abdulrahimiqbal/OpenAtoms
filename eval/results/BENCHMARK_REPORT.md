@@ -1,11 +1,22 @@
-# Benchmark Report
+# BENCHMARK REPORT
 
-| Metric | Value |
-| --- | --- |
-| Baseline violation rate | 0.8000 |
-| OpenAtoms violation rate | 0.0000 |
-| Relative violation reduction | 1.0000 |
-| Chi-squared (df=1) | 26.6667 |
-| p-value | 0.000000 |
-| Cohen's h | 2.2143 |
-| Cost per valid protocol | 1620.00 |
+- Date: 2026-02-26
+- N: 200
+- Seed: 123
+- Schema version: 1.1.0
+- Baseline: Pass protocol proposals directly to execution checks without repair.
+- Violation definition: A protocol is counted as violating when OpenAtoms dry_run raises a PhysicsError.
+
+## Results
+
+| Condition | Violations | Violation rate | 95% Wilson CI |
+| --- | ---: | ---: | --- |
+| baseline (no_validation) | 152 / 200 | 0.760000 | [0.696265, 0.813935] |
+| with_validators | 9 / 200 | 0.045000 | [0.023852, 0.083298] |
+
+- Relative violation reduction: 0.940789
+- Git commit: 9fa5f9790cfd524acfa91a50d582ca099a7b20be
+
+## Reproduction
+
+`python -m eval.run_benchmark --seed 123 --n 200`

@@ -116,3 +116,35 @@ Verification commands and outcomes:
 - `. .venv/bin/activate && python -m pytest -q` -> `28 passed, 10 warnings`
 - `. .venv/bin/activate && for f in examples/*.py; do python "$f"; done` -> all examples exit `0`
 - `. .venv/bin/activate && python scripts/verify_reproducibility.py` -> `Determinism check passed: Node B output identical across 3 runs.`
+
+## Issue 4 updates (deterministic benchmark pipeline)
+
+Changes made:
+
+- Added deterministic benchmark pipeline under `eval/`:
+  - `eval/generate_protocols.py`
+  - `eval/evaluate.py`
+  - `eval/baselines.py`
+  - `eval/run_benchmark.py`
+- Added benchmark package initializer: `eval/__init__.py`.
+- Added deterministic artifact outputs:
+  - `eval/results/raw_runs.jsonl`
+  - `eval/results/summary.json`
+  - `eval/results/BENCHMARK_REPORT.md`
+- Removed stale artifact format file:
+  - deleted `eval/results/benchmark_v1.json`
+- Added tests:
+  - deterministic summary bytes across reruns
+  - validator-vs-baseline sanity (`violations_with_validators <= baseline`)
+  - report required fields (N, seed, baseline, schema version, date, violation definition)
+  - CLI generation path via `python -m eval.run_benchmark`
+
+Verification commands and outcomes:
+
+- `. .venv/bin/activate && python -m eval.run_benchmark --seed 123 --n 200` -> success
+  - baseline violations: `152/200` (rate `0.760000`)
+  - with_validators violations: `9/200` (rate `0.045000`)
+  - relative violation reduction: `0.940789`
+- `. .venv/bin/activate && python -m pytest -q` -> `32 passed, 10 warnings`
+- `. .venv/bin/activate && for f in examples/*.py; do python "$f"; done` -> all examples exit `0`
+- `. .venv/bin/activate && python scripts/verify_reproducibility.py` -> `Determinism check passed: Node B output identical across 3 runs.`

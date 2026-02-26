@@ -1,0 +1,28 @@
+{
+  "baseline": {
+    "description": "Pass protocol proposals directly to execution checks without repair.",
+    "name": "no_validation",
+    "violation_rate": 0.76,
+    "violation_rate_ci95": [
+      0.696265,
+      0.813935
+    ],
+    "violations": 152
+  },
+  "date": "2026-02-26",
+  "git_commit": "9fa5f9790cfd524acfa91a50d582ca099a7b20be",
+  "n": 200,
+  "relative_violation_reduction": 0.940789,
+  "schema_path": "/Users/rahim/Downloads/OpenAtoms/openatoms/ir/schema_v1_1_0.json",
+  "schema_version": "1.1.0",
+  "seed": 123,
+  "violation_definition": "A protocol is counted as violating when OpenAtoms dry_run raises a PhysicsError.",
+  "with_validators": {
+    "violation_rate": 0.045,
+    "violation_rate_ci95": [
+      0.023852,
+      0.083298
+    ],
+    "violations": 9
+  }
+}
