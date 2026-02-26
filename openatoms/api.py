@@ -6,6 +6,17 @@ from dataclasses import asdict, dataclass
 from typing import Any, Iterable, Literal, Mapping, Sequence, cast
 
 from .actions import Action
+from .bundle import (
+    BUNDLE_VERSION,
+    BundleError,
+    BundleReplayReport,
+    BundleVerificationReport,
+    create_bundle,
+    replay_bundle,
+    sign_bundle,
+    verify_bundle,
+    verify_signature,
+)
 from .core import Container
 from .dag import ProtocolGraph
 from .errors import SimulationDependencyError
@@ -229,15 +240,24 @@ def protocol_provenance(payload: Mapping[str, Any]) -> dict[str, Any]:
 
 
 __all__ = [
+    "BUNDLE_VERSION",
+    "BundleError",
+    "BundleReplayReport",
+    "BundleVerificationReport",
     "ProtocolState",
     "SimulatorInvocation",
     "build_protocol",
     "compile_protocol",
+    "create_bundle",
     "create_protocol_state",
     "invoke_optional_simulator",
     "protocol_hash",
     "protocol_provenance",
+    "replay_bundle",
     "run_dry_run",
     "serialize_ir",
+    "sign_bundle",
     "validate_protocol_ir",
+    "verify_bundle",
+    "verify_signature",
 ]

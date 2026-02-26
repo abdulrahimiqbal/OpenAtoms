@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import inspect
+import sys
 from pathlib import Path
-
-import openatoms.api as public_api
 
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "docs" / "INTERFACE.md"
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+import openatoms.api as public_api  # noqa: E402
 
 
 def _format_signature(name: str) -> str:
@@ -100,6 +103,39 @@ print(protocol_hash(payload))
 ## Stable Public API
 
 {signature_lines}
+
+## Bundle API Synopsis
+
+- `create_bundle(...)` creates an OpenAtoms Experiment Bundle (OEB) directory or `.zip`.
+- `verify_bundle(...)` checks required files, schema compatibility, hashes,
+  and signed manifest state.
+- `replay_bundle(...)` regenerates deterministic checks and compares
+  against recorded check artifacts.
+- `sign_bundle(...)` applies optional HMAC-SHA256 manifest signing.
+- `verify_signature(...)` verifies signature validity and signed-content consistency.
+
+Bundle spec version: `{public_api.BUNDLE_VERSION}`.
+
+## Bundle CLI Synopsis
+
+```bash
+openatoms bundle create --ir protocol.ir.json --output ./bundle --deterministic
+openatoms bundle verify --bundle ./bundle
+openatoms bundle replay --bundle ./bundle --strict
+openatoms bundle sign --bundle ./bundle
+openatoms bundle verify-signature --bundle ./bundle
+```
+
+Use `--json` on bundle commands for machine-readable output.
+
+## Bundle Error Taxonomy
+
+- `OEB001`: Missing required file/path.
+- `OEB002`: Hash mismatch / tamper evidence failure.
+- `OEB003`: Bundle or schema incompatibility.
+- `OEB004`: Signature invalid or unverifiable.
+- `OEB005`: Replay mismatch.
+- `OEB006`: Bundle manifest/structure invalid.
 
 ## Expected Errors and Handling
 

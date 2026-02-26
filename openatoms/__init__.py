@@ -1,17 +1,26 @@
 """OpenAtoms package exports."""
 
 from .api import (
+    BUNDLE_VERSION,
+    BundleError,
+    BundleReplayReport,
+    BundleVerificationReport,
     ProtocolState,
     SimulatorInvocation,
     build_protocol,
     compile_protocol,
+    create_bundle,
     create_protocol_state,
     invoke_optional_simulator,
     protocol_hash,
     protocol_provenance,
+    replay_bundle,
     run_dry_run,
     serialize_ir,
+    sign_bundle,
     validate_protocol_ir,
+    verify_bundle,
+    verify_signature,
 )
 from .actions import Action, Combine, Measure, Move, Transform
 from .core import Container, Environment, Matter, Phase
@@ -67,6 +76,10 @@ __all__ = [
     "MUJOCO_AVAILABLE",
     "ProtocolState",
     "SimulatorInvocation",
+    "BundleError",
+    "BundleVerificationReport",
+    "BundleReplayReport",
+    "BUNDLE_VERSION",
     "create_protocol_state",
     "build_protocol",
     "run_dry_run",
@@ -76,4 +89,9 @@ __all__ = [
     "invoke_optional_simulator",
     "protocol_hash",
     "protocol_provenance",
+    "create_bundle",
+    "verify_bundle",
+    "replay_bundle",
+    "sign_bundle",
+    "verify_signature",
 ]

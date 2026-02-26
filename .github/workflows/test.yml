@@ -30,6 +30,10 @@ jobs:
         run: |
           pytest tests/ --cov=openatoms --cov-report=xml --cov-fail-under=80
 
+      - name: Bundle reproducibility checks
+        run: |
+          pytest -q tests/test_bundle_*.py tests/test_repro_docs_up_to_date.py
+
       - name: Run doctests
         run: |
           python -m pytest --doctest-modules openatoms/

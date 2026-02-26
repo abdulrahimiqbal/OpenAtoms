@@ -109,6 +109,17 @@ def test_wheel_install_smoke_schema_and_validation(tmp_path: Path) -> None:
         text=True,
     )
 
+    venv_site_packages = (
+        venv_dir / "Lib" / "site-packages"
+        if os.name == "nt"
+        else venv_dir
+        / "lib"
+        / f"python{sys.version_info.major}.{sys.version_info.minor}"
+        / "site-packages"
+    )
+    env = dict(os.environ)
+    env["PYTHONPATH"] = os.pathsep.join([str(venv_site_packages), _host_site_packages()])
+
     check_script = textwrap.dedent(
         """
         from openatoms.ir import load_schema, validate_ir
@@ -140,8 +151,6 @@ def test_wheel_install_smoke_schema_and_validation(tmp_path: Path) -> None:
         assert validate_ir(payload) == payload
         """
     )
-    env = dict(os.environ)
-    env["PYTHONPATH"] = _host_site_packages()
     run = subprocess.run(
         [str(python_exe), "-c", check_script],
         check=True,
@@ -150,3 +159,13 @@ def test_wheel_install_smoke_schema_and_validation(tmp_path: Path) -> None:
         env=env,
     )
     assert "https://openatoms.org/ir/v1.1.0/schema.json" in run.stdout
+
+    cli_exe = venv_dir / ("Scripts/openatoms.exe" if os.name == "nt" else "bin/openatoms")
+    cli = subprocess.run(
+        [str(cli_exe), "bundle", "--help"],
+        check=False,
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+    assert cli.returncode == 0, cli.stderr

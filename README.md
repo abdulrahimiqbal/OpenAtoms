@@ -69,6 +69,22 @@ If `cantera` is missing:
 - CI (`OPENATOMS_CI=1`) exits nonzero.
 - Local runs may skip only with `OPENATOMS_ALLOW_SKIP=1`.
 
+## Experiment Bundles (OEB)
+
+OpenAtoms includes a first-class reproducibility bundle format:
+- Spec: [`docs/BUNDLE_SPEC.md`](docs/BUNDLE_SPEC.md)
+- Contract + workflows: [`docs/REPRODUCIBILITY.md`](docs/REPRODUCIBILITY.md)
+
+Core CLI:
+
+```bash
+openatoms bundle create --ir protocol.ir.json --output ./bundle --deterministic
+openatoms bundle verify --bundle ./bundle
+openatoms bundle replay --bundle ./bundle --strict
+openatoms bundle sign --bundle ./bundle
+openatoms bundle verify-signature --bundle ./bundle
+```
+
 ## Simulator Safety Contracts
 
 - Node A (`OT2Simulator`): guarantees deterministic pipetting/deck safety checks; does **not** model meniscus/fluid dynamics.

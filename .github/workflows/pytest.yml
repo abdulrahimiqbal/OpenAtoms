@@ -42,11 +42,15 @@ jobs:
       - name: Interface report check
         run: pytest -q tests/test_interface_report_up_to_date.py
 
+      - name: Bundle reproducibility tests
+        run: pytest -q tests/test_bundle_*.py tests/test_repro_docs_up_to_date.py
+
       - name: Minimal pip install smoke test
         run: |
           python -m venv /tmp/openatoms-install-test
           /tmp/openatoms-install-test/bin/pip install .
           /tmp/openatoms-install-test/bin/python -c "import openatoms; from openatoms import build_protocol, compile_protocol; print(openatoms.__name__)"
+          /tmp/openatoms-install-test/bin/openatoms bundle --help
 
       - name: Examples as tests
         run: pytest -q tests/test_examples_execution.py

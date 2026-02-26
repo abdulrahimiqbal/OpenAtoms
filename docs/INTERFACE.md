@@ -70,17 +70,59 @@ print(protocol_hash(payload))
 
 ## Stable Public API
 
+- `BUNDLE_VERSION`
+- `BundleError(code: 'str', message: 'str', *, path: 'str | None' = None)`
+- `BundleReplayReport(ok: 'bool', bundle_path: 'str', strict: 'bool', checks: 'Mapping[str, Any]', errors: 'tuple[BundleIssue, ...]') -> None`
+- `BundleVerificationReport(ok: 'bool', bundle_path: 'str', bundle_version: 'str | None', schema_version: 'str | None', verified_files: 'int', errors: 'tuple[BundleIssue, ...]') -> None`
 - `ProtocolState(containers: 'tuple[Container, ...]') -> None`
 - `SimulatorInvocation(simulator: "Literal['opentrons', 'cantera', 'mujoco']", status: "Literal['ok', 'skipped']", payload: 'Mapping[str, Any]', reason: 'str | None' = None) -> None`
 - `build_protocol(name: 'str', actions: 'Sequence[Action]', *, state: 'ProtocolState | None' = None) -> 'ProtocolGraph'`
 - `compile_protocol(protocol: 'ProtocolGraph', *, run_dry_run_gate: 'bool' = True, mode: "Literal['mock', 'science']" = 'mock') -> 'dict[str, Any]'`
+- `create_bundle(*, output_path: 'str | Path', protocol: 'ProtocolGraph | None' = None, ir_payload: 'Mapping[str, Any] | str | Path | None' = None, agent_tool_calls: 'Iterable[Mapping[str, Any] | str] | str | Path | None' = None, agent_prompts: 'Mapping[str, Any] | str | Path | None' = None, agent_model: 'Mapping[str, Any] | str | Path | None' = None, results_paths: 'Sequence[str | Path] | None' = None, simulators: 'Sequence[str] | None' = None, metadata: 'Mapping[str, Any] | None' = None, seeds: 'Mapping[str, int] | None' = None, deterministic: 'bool' = False, zip_output: 'bool' = False) -> 'Path'`
 - `create_protocol_state(containers: 'Iterable[Container]') -> 'ProtocolState'`
 - `invoke_optional_simulator(protocol: 'ProtocolGraph', *, simulator: "Literal['opentrons', 'cantera', 'mujoco']") -> 'SimulatorInvocation'`
 - `protocol_hash(payload: 'Mapping[str, Any]') -> 'str'`
 - `protocol_provenance(payload: 'Mapping[str, Any]') -> 'dict[str, Any]'`
+- `replay_bundle(bundle_path: 'str | Path', *, protocol: 'ProtocolGraph | None' = None, simulators: 'Sequence[str] | None' = None, strict: 'bool' = False, output_path: 'str | Path | None' = None, raise_on_error: 'bool' = False) -> 'BundleReplayReport'`
 - `run_dry_run(protocol: 'ProtocolGraph', *, mode: "Literal['mock', 'science']" = 'mock') -> 'bool'`
 - `serialize_ir(protocol: 'ProtocolGraph', *, run_dry_run_gate: 'bool' = True, mode: "Literal['mock', 'science']" = 'mock') -> 'str'`
+- `sign_bundle(bundle_path: 'str | Path', *, key: 'str | bytes | None' = None, key_env: 'str' = 'OPENATOMS_BUNDLE_SIGNING_KEY', key_id: 'str | None' = None, deterministic: 'bool' = False) -> 'dict[str, Any]'`
 - `validate_protocol_ir(payload: 'Mapping[str, Any]', *, check_invariants: 'bool' = True) -> 'dict[str, Any]'`
+- `verify_bundle(bundle_path: 'str | Path', *, verify_manifest_signature: 'bool' = True, key: 'str | bytes | None' = None, key_env: 'str' = 'OPENATOMS_BUNDLE_SIGNING_KEY', raise_on_error: 'bool' = False) -> 'BundleVerificationReport'`
+- `verify_signature(bundle_path: 'str | Path', *, key: 'str | bytes | None' = None, key_env: 'str' = 'OPENATOMS_BUNDLE_SIGNING_KEY', raise_on_error: 'bool' = False) -> 'BundleVerificationReport'`
+
+## Bundle API Synopsis
+
+- `create_bundle(...)` creates an OpenAtoms Experiment Bundle (OEB) directory or `.zip`.
+- `verify_bundle(...)` checks required files, schema compatibility, hashes,
+  and signed manifest state.
+- `replay_bundle(...)` regenerates deterministic checks and compares
+  against recorded check artifacts.
+- `sign_bundle(...)` applies optional HMAC-SHA256 manifest signing.
+- `verify_signature(...)` verifies signature validity and signed-content consistency.
+
+Bundle spec version: `1.0`.
+
+## Bundle CLI Synopsis
+
+```bash
+openatoms bundle create --ir protocol.ir.json --output ./bundle --deterministic
+openatoms bundle verify --bundle ./bundle
+openatoms bundle replay --bundle ./bundle --strict
+openatoms bundle sign --bundle ./bundle
+openatoms bundle verify-signature --bundle ./bundle
+```
+
+Use `--json` on bundle commands for machine-readable output.
+
+## Bundle Error Taxonomy
+
+- `OEB001`: Missing required file/path.
+- `OEB002`: Hash mismatch / tamper evidence failure.
+- `OEB003`: Bundle or schema incompatibility.
+- `OEB004`: Signature invalid or unverifiable.
+- `OEB005`: Replay mismatch.
+- `OEB006`: Bundle manifest/structure invalid.
 
 ## Expected Errors and Handling
 

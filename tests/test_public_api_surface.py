@@ -7,17 +7,26 @@ import openatoms
 import openatoms.api as public_api
 
 EXPECTED_PUBLIC_API = [
+    "BUNDLE_VERSION",
+    "BundleError",
+    "BundleReplayReport",
+    "BundleVerificationReport",
     "ProtocolState",
     "SimulatorInvocation",
     "build_protocol",
     "compile_protocol",
+    "create_bundle",
     "create_protocol_state",
     "invoke_optional_simulator",
     "protocol_hash",
     "protocol_provenance",
+    "replay_bundle",
     "run_dry_run",
     "serialize_ir",
+    "sign_bundle",
     "validate_protocol_ir",
+    "verify_bundle",
+    "verify_signature",
 ]
 
 
@@ -56,7 +65,11 @@ def test_public_api_type_hints_cover_contract_functions() -> None:
         "invoke_optional_simulator",
         "protocol_hash",
         "protocol_provenance",
+        "create_bundle",
+        "verify_bundle",
+        "replay_bundle",
+        "sign_bundle",
+        "verify_signature",
     ]:
         hints = get_type_hints(getattr(public_api, fn_name))
         assert "return" in hints, f"{fn_name} must expose return type hints"
-
