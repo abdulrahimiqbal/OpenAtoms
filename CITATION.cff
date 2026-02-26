@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+title: "OpenAtoms"
+message: "If you use OpenAtoms, please cite this software."
+type: software
+authors:
+  - name: "OpenAtoms Contributors"
+repository-code: "https://github.com/abdulrahimiqbal/OpenAtoms"
+url: "https://github.com/abdulrahimiqbal/OpenAtoms"
+license: "MIT"
+version: "0.2.0"
+date-released: "2026-02-26"
+abstract: >-
+  Deterministic validation and simulation layer for AI-generated physical
+  protocols, with structured remediation feedback and reproducible IR exports.
+keywords:
+  - physical-ai
+  - deterministic-validation
+  - simulation
+  - protocol-compiler

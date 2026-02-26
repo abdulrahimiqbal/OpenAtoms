@@ -71,3 +71,8 @@ python examples/hello_atoms.py
   note         = {Version 0.2.0}
 }
 ```
+
+## Release and DOI
+- Release checklist: [`RELEASE_CHECKLIST.md`](RELEASE_CHECKLIST.md)
+- Zenodo setup guide: [`docs/ZENODO.md`](docs/ZENODO.md)
+- Citation metadata: [`CITATION.cff`](CITATION.cff), [`.zenodo.json`](.zenodo.json)

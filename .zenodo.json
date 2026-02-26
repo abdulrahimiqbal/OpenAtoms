@@ -1,0 +1,27 @@
+{
+  "title": "OpenAtoms: Deterministic Validation Layer for AI-Generated Physical Protocols",
+  "description": "OpenAtoms validates AI-generated physical protocols against deterministic constraints and simulation nodes before hardware execution.",
+  "creators": [
+    {
+      "name": "OpenAtoms Contributors"
+    }
+  ],
+  "license": "MIT",
+  "upload_type": "software",
+  "access_right": "open",
+  "keywords": [
+    "physical-ai",
+    "protocol-validation",
+    "deterministic-systems",
+    "cantera",
+    "opentrons",
+    "robotics"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/abdulrahimiqbal/OpenAtoms",
+      "relation": "isSupplementTo",
+      "resource_type": "software"
+    }
+  ]
+}
