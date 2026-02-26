@@ -22,7 +22,16 @@ classifiers = [
 ]
 dependencies = []
 
+[project.optional-dependencies]
+science = [
+  "cantera>=3.0",
+  "opentrons>=7.0",
+]
+
 [project.urls]
 "Homepage" = "https://github.com/abdulrahimiqbal/OpenAtoms"
 "Repository" = "https://github.com/abdulrahimiqbal/OpenAtoms"
 "Issues" = "https://github.com/abdulrahimiqbal/OpenAtoms/issues"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]

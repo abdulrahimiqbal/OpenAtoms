@@ -1,6 +1,7 @@
 """Structured physics validation exceptions for agent feedback loops."""
 
 import json
+from typing import Optional
 
 
 class PhysicsError(Exception):
@@ -99,5 +100,50 @@ class EmptyContainerError(PhysicsError):
                 "container": container_name,
                 "method": method,
                 "available_amount_ml": 0.0,
+            },
+        )
+
+
+class StructuralIntegrityError(PhysicsError):
+    """Raised when simulated pressure exceeds vessel structural limits."""
+
+    def __init__(
+        self,
+        vessel_name: str,
+        observed_pressure_pa: float,
+        burst_pressure_pa: float,
+        state_observation_json: Optional[str] = None,
+    ):
+        details = {
+            "vessel": vessel_name,
+            "observed_pressure_pa": observed_pressure_pa,
+            "burst_pressure_pa": burst_pressure_pa,
+        }
+        if state_observation_json is not None:
+            details["state_observation_json"] = state_observation_json
+
+        super().__init__(
+            message=(
+                f"Structural failure risk in '{vessel_name}'. Simulated pressure "
+                f"{observed_pressure_pa} Pa exceeds burst pressure {burst_pressure_pa} Pa."
+            ),
+            error_type="StructuralIntegrityError",
+            details=details,
+        )
+
+
+class SimulationDependencyError(PhysicsError):
+    """Raised when an optional science simulation dependency is unavailable."""
+
+    def __init__(self, dependency: str, import_error: str):
+        super().__init__(
+            message=(
+                f"Science simulation dependency '{dependency}' is unavailable. "
+                "Install it to run science-mode simulations."
+            ),
+            error_type="SimulationDependencyError",
+            details={
+                "dependency": dependency,
+                "import_error": import_error,
             },
         )
