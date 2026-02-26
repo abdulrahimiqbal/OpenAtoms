@@ -1,24 +1,27 @@
 """OpenAtoms package exports."""
 
 from .actions import Action, Combine, Measure, Move, Transform
-from .adapters import (
-    ArduinoCloudAdapter,
-    BambuAdapter,
-    BaseAdapter,
-    HomeAssistantAdapter,
-    OpentronsAdapter,
-    SmartBaristaAdapter,
-    ViamAdapter,
-)
 from .core import Container, Environment, Matter, Phase
 from .dag import ProtocolGraph
-from .driver_conformance import run_conformance
-from .profiles import CapabilityProfile
-from .replay import replay_signature
+from .errors import (
+    MassBalanceViolationError,
+    OrderingConstraintError,
+    PhysicsError,
+    ReactionFeasibilityError,
+    ThermalExcursionError,
+    VolumeOverflowError,
+)
 from .runner import ProtocolRunner
 from .sim.harness import SimulationHarness, SimulationThresholds
-from .sim.registry import OpentronsSimValidator, Vessel, VirtualReactor
-from .units import Quantity
+from .sim.registry import (
+    MUJOCO_AVAILABLE,
+    OT2Simulator,
+    OpentronsSimValidator,
+    RoboticsSimulator,
+    Vessel,
+    VirtualReactor,
+)
+from .units import Q_, Quantity, ureg
 
 __all__ = [
     "Action",
@@ -31,21 +34,22 @@ __all__ = [
     "Environment",
     "Phase",
     "Quantity",
+    "Q_",
+    "ureg",
     "ProtocolGraph",
-    "CapabilityProfile",
-    "BaseAdapter",
-    "OpentronsAdapter",
-    "ViamAdapter",
-    "BambuAdapter",
-    "HomeAssistantAdapter",
-    "ArduinoCloudAdapter",
-    "SmartBaristaAdapter",
     "ProtocolRunner",
     "SimulationHarness",
     "SimulationThresholds",
-    "replay_signature",
-    "run_conformance",
+    "PhysicsError",
+    "VolumeOverflowError",
+    "ThermalExcursionError",
+    "MassBalanceViolationError",
+    "OrderingConstraintError",
+    "ReactionFeasibilityError",
     "VirtualReactor",
     "Vessel",
+    "OT2Simulator",
     "OpentronsSimValidator",
+    "RoboticsSimulator",
+    "MUJOCO_AVAILABLE",
 ]

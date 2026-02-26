@@ -1,0 +1,143 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://openatoms.org/ir/v1.1.0/schema.json",
+  "title": "OpenAtoms Protocol IR",
+  "description": "Machine-readable intermediate representation of a validated physical protocol. Version 1.1.0.",
+  "type": "object",
+  "required": [
+    "ir_version",
+    "protocol_id",
+    "correlation_id",
+    "created_at",
+    "steps",
+    "provenance"
+  ],
+  "properties": {
+    "ir_version": {
+      "type": "string",
+      "const": "1.1.0"
+    },
+    "protocol_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "correlation_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "dry_run_passed": {
+      "type": "boolean"
+    },
+    "simulation_nodes_passed": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "bio_kinetic",
+          "thermo_kinetic",
+          "contact_kinetic"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "step",
+          "step_id",
+          "action_type",
+          "parameters",
+          "depends_on",
+          "resources"
+        ],
+        "properties": {
+          "step": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "step_id": {
+            "type": "string",
+            "pattern": "^s[0-9]+$"
+          },
+          "action_type": {
+            "type": "string",
+            "minLength": 1
+          },
+          "parameters": {
+            "type": "object"
+          },
+          "depends_on": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "resources": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "references": {
+      "type": "object",
+      "properties": {
+        "containers": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "materials": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "provenance": {
+      "type": "object",
+      "required": [
+        "ir_hash",
+        "simulator_versions",
+        "noise_seed",
+        "validator_version"
+      ],
+      "properties": {
+        "ir_hash": {
+          "type": "string",
+          "pattern": "^[A-Fa-f0-9]{64}$"
+        },
+        "simulator_versions": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "noise_seed": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "validator_version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,92 +1,101 @@
-"""Typed quantity primitives and deterministic unit conversions."""
+"""Unit-safe quantity utilities built on Pint.
+
+Example:
+    >>> from openatoms.units import Q_, require_volume
+    >>> require_volume(Q_(5, "milliliter")).to("liter").magnitude
+    0.005
+"""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Dict, Tuple, Union
+from typing import Any
 
-_VOLUME_TO_ML: Dict[str, float] = {
-    "ml": 1.0,
-    "l": 1000.0,
-}
+from pint import UnitRegistry
 
-_TEMP_TO_C: Dict[str, Tuple[float, float]] = {
-    # celsius = (value * scale) + offset
-    "c": (1.0, 0.0),
-    "k": (1.0, -273.15),
-}
-
-_TIME_TO_S: Dict[str, float] = {
-    "s": 1.0,
-    "min": 60.0,
-    "h": 3600.0,
-}
+ureg = UnitRegistry(autoconvert_offset_to_baseunit=True)
+Q_ = ureg.Quantity
+Quantity = type(Q_(1, "meter"))
 
 
-@dataclass(frozen=True)
-class Quantity:
-    """Represents a typed quantity that supports deterministic conversions."""
+def require_quantity(value: Any) -> Quantity:
+    """Return a pint quantity or raise.
 
-    value: float
-    unit: str
-    dimension: str
-
-    def to(self, target_unit: str) -> "Quantity":
-        """Convert this quantity into another unit with the same dimension."""
-        dim = self.dimension.strip().lower()
-        source_unit = self.unit.strip().lower()
-        target = target_unit.strip().lower()
-
-        if dim == "volume":
-            if source_unit not in _VOLUME_TO_ML or target not in _VOLUME_TO_ML:
-                raise ValueError(f"Unsupported volume conversion {source_unit} -> {target}.")
-            ml = self.value * _VOLUME_TO_ML[source_unit]
-            return Quantity(value=ml / _VOLUME_TO_ML[target], unit=target, dimension=self.dimension)
-
-        if dim == "temperature":
-            if source_unit not in _TEMP_TO_C or target not in _TEMP_TO_C:
-                raise ValueError(f"Unsupported temperature conversion {source_unit} -> {target}.")
-            scale, offset = _TEMP_TO_C[source_unit]
-            celsius = (self.value * scale) + offset
-            target_scale, target_offset = _TEMP_TO_C[target]
-            target_value = (celsius - target_offset) / target_scale
-            return Quantity(value=target_value, unit=target, dimension=self.dimension)
-
-        if dim == "time":
-            if source_unit not in _TIME_TO_S or target not in _TIME_TO_S:
-                raise ValueError(f"Unsupported time conversion {source_unit} -> {target}.")
-            seconds = self.value * _TIME_TO_S[source_unit]
-            return Quantity(
-                value=seconds / _TIME_TO_S[target],
-                unit=target,
-                dimension=self.dimension,
-            )
-
-        raise ValueError(f"Unsupported dimension '{self.dimension}'.")
-
-
-def as_volume_ml(value: Union[float, Quantity]) -> float:
-    """Convert raw value or typed volume quantity to milliliters."""
+    Example:
+        >>> from openatoms.units import Q_, require_quantity
+        >>> require_quantity(Q_(1, "gram")).to("milligram").magnitude
+        1000.0
+    """
     if isinstance(value, Quantity):
-        if value.dimension.strip().lower() != "volume":
-            raise ValueError("Expected volume quantity.")
-        return value.to("ml").value
-    return float(value)
+        return value
+    raise TypeError("Physical quantities must be Pint Quantity objects with explicit units.")
 
 
-def as_temp_c(value: Union[float, Quantity]) -> float:
-    """Convert raw value or typed temperature quantity to celsius."""
-    if isinstance(value, Quantity):
-        if value.dimension.strip().lower() != "temperature":
-            raise ValueError("Expected temperature quantity.")
-        return value.to("c").value
-    return float(value)
+def require_volume(value: Any) -> Quantity:
+    """Validate that `value` is a volume quantity.
+
+    Example:
+        >>> from openatoms.units import Q_, require_volume
+        >>> require_volume(Q_(1, "liter")).to("milliliter").magnitude
+        1000.0
+    """
+    quantity = require_quantity(value)
+    if not quantity.check("[length] ** 3"):
+        raise TypeError(f"Expected volume quantity, received '{quantity.units}'.")
+    return quantity
 
 
-def as_time_s(value: Union[float, Quantity]) -> float:
-    """Convert raw value or typed time quantity to seconds."""
-    if isinstance(value, Quantity):
-        if value.dimension.strip().lower() != "time":
-            raise ValueError("Expected time quantity.")
-        return value.to("s").value
-    return float(value)
+def require_mass(value: Any) -> Quantity:
+    """Validate that `value` is a mass quantity.
+
+    Example:
+        >>> from openatoms.units import Q_, require_mass
+        >>> require_mass(Q_(2, "gram")).to("milligram").magnitude
+        2000.0
+    """
+    quantity = require_quantity(value)
+    if not quantity.check("[mass]"):
+        raise TypeError(f"Expected mass quantity, received '{quantity.units}'.")
+    return quantity
+
+
+def require_temperature(value: Any) -> Quantity:
+    """Validate that `value` is a temperature quantity.
+
+    Example:
+        >>> from openatoms.units import Q_, require_temperature
+        >>> round(require_temperature(Q_(300, "kelvin")).to("degC").magnitude, 2)
+        26.85
+    """
+    quantity = require_quantity(value)
+    if not quantity.check("[temperature]"):
+        raise TypeError(f"Expected temperature quantity, received '{quantity.units}'.")
+    return quantity
+
+
+def require_time(value: Any) -> Quantity:
+    """Validate that `value` is a time quantity.
+
+    Example:
+        >>> from openatoms.units import Q_, require_time
+        >>> require_time(Q_(2, "minute")).to("second").magnitude
+        120
+    """
+    quantity = require_quantity(value)
+    if not quantity.check("[time]"):
+        raise TypeError(f"Expected time quantity, received '{quantity.units}'.")
+    return quantity
+
+
+def quantity_json(value: Quantity) -> dict[str, str | float]:
+    """Encode a pint quantity as deterministic JSON metadata.
+
+    Example:
+        >>> from openatoms.units import Q_, quantity_json
+        >>> quantity_json(Q_(1.5, "gram"))["unit"]
+        'g'
+    """
+    quantity = require_quantity(value)
+    return {
+        "value": float(quantity.magnitude),
+        "unit": f"{quantity.units:~}",
+    }

@@ -1,12 +1,21 @@
+"""Minimal OpenAtoms hello world producing IR JSON."""
+
 from openatoms.actions import Move
 from openatoms.core import Container, Matter, Phase
 from openatoms.dag import ProtocolGraph
+from openatoms.units import Q_
 
-a = Container("A", 100, 100)
-b = Container("B", 100, 100)
-a.contents.append(Matter("H2O", Phase.LIQUID, 10, 10))
 
-g = ProtocolGraph("Hello_Atoms")
-g.add_step(Move(a, b, 5))
-g.dry_run()
-print(g.export_json())
+def main() -> None:
+    a = Container(id="A", label="A", max_volume=Q_(500, "microliter"), max_temp=Q_(100, "degC"), min_temp=Q_(0, "degC"))
+    b = Container(id="B", label="B", max_volume=Q_(500, "microliter"), max_temp=Q_(100, "degC"), min_temp=Q_(0, "degC"))
+    a.contents.append(Matter(name="H2O", phase=Phase.LIQUID, mass=Q_(200, "milligram"), volume=Q_(200, "microliter")))
+
+    graph = ProtocolGraph("Hello_Atoms")
+    graph.add_step(Move(a, b, Q_(100, "microliter")))
+    graph.dry_run()
+    print(graph.export_json())
+
+
+if __name__ == "__main__":
+    main()
