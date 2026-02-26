@@ -20,19 +20,23 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Artificial Intelligence"
 ]
-dependencies = []
+dependencies = [
+  "pint>=0.25,<1",
+  "pydantic>=2,<3",
+  "jsonschema>=4,<5",
+]
 
 [project.optional-dependencies]
 science = [
-  "cantera>=3.0",
-  "opentrons>=7.0",
+  "cantera>=3,<4",
+  "opentrons>=7,<8",
 ]
 dev = [
   "build>=1.2.0",
-  "hypothesis>=6.100.0",
-  "jsonschema>=4.20.0",
+  "hypothesis>=6,<7",
   "mypy>=1.8.0",
-  "pytest>=8.0.0",
+  "pytest>=9,<10",
+  "pytest-cov>=7,<8",
   "ruff>=0.4.0",
 ]
 
@@ -45,7 +49,7 @@ dev = [
 pythonpath = ["."]
 
 [tool.setuptools.package-data]
-openatoms = ["schemas/*.json"]
+openatoms = ["schemas/*.json", "ir/*.json"]
 
 [tool.ruff]
 line-length = 100
@@ -61,3 +65,16 @@ warn_unused_configs = true
 disallow_untyped_defs = false
 check_untyped_defs = true
 ignore_missing_imports = true
+
+[tool.coverage.run]
+omit = [
+  "openatoms/adapters/*",
+  "openatoms/driver_conformance.py",
+  "openatoms/policy.py",
+  "openatoms/profiles.py",
+  "openatoms/provenance.py",
+  "openatoms/replay.py",
+  "openatoms/runner.py",
+  "openatoms/sim/harness.py",
+  "openatoms/tools.py",
+]

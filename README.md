@@ -1,116 +1,73 @@
-# OpenAtoms: Code for the Physical World
+# OpenAtoms
 
-**Mission: Atoms for the Real World.**
+## What It Does (One Paragraph, No Marketing)
+OpenAtoms takes an AI-generated protocol plan, compiles it into a deterministic `ProtocolGraph`, validates hard physical invariants (volume, thermal safety, and mass conservation), optionally runs domain simulators (bio-kinetic, thermo-kinetic, contact-kinetic), and emits versioned, hash-addressable IR JSON for reproducible execution and agent feedback loops.
 
-OpenAtoms is the deterministic execution layer that bridges AI reasoning and physical systems.
+## Why It Matters
+Example: an agent proposes aspirating `200 uL` from a well that contains `150 uL`. Without validation this becomes a runtime liquid-handling fault; OpenAtoms catches it in dry-run, returns a structured `PhysicsError` with an actionable remediation hint, and the corrected transfer volume then passes simulation.
 
-## The Problem
+## Architecture
+```text
+LLM / Tool Agent
+      |
+      v
+ProtocolGraph (typed actions + dependencies)
+      |
+      v
+Deterministic Validators
+(volume, thermal, mass, ordering)
+      |
+      v
+Simulation Registry
+  - Node A: OT2Simulator
+  - Node B: VirtualReactor (Cantera-backed thermodynamics)
+  - Node C: RoboticsSimulator (MuJoCo-aware fallback)
+      |
+      v
+StateObservation + PhysicsError(remediation_hint)
+      |
+      v
+LLM correction loop / exported IR JSON (v1.1.0)
+```
 
-LLMs live in a world of bits; reality lives in a world of atoms.
+## Three Simulation Nodes
+Node A (`openatoms/sim/registry/opentrons_sim.py`) validates pipetting protocols against aspiration availability, deck layout collisions, and per-well dispense accounting; concentrations can be tracked with `MolarityTracker` in [`examples/node_a_bio_kinetic.py`](examples/node_a_bio_kinetic.py).
 
-That gap is where physical hallucinations become expensive and dangerous. A plausible text plan can still violate volume limits, thermal constraints, ordering rules, and machine capabilities.
+Node B (`openatoms/sim/registry/kinetics_sim.py`) provides thermo-kinetic trajectory generation, thermal runaway detection (`dT/dt` thresholding), and Gibbs-feasibility checks; demonstrations are in [`examples/node_b_thermo_kinetic.py`](examples/node_b_thermo_kinetic.py).
 
-## The Solution
+Node C (`openatoms/sim/registry/robotics_sim.py`) checks grasp force feasibility, vial contact stress vs. material yield limits, and trajectory torque/collision risks with MuJoCo-aware fallback behavior; demonstrations are in [`examples/node_c_contact_kinetic.py`](examples/node_c_contact_kinetic.py).
 
-OpenAtoms provides a hardware-agnostic, deterministic compiler that translates AI intent into physical execution:
+## Benchmark Results
+Source: [`eval/results/BENCHMARK_REPORT.md`](eval/results/BENCHMARK_REPORT.md)
 
-- Model physical entities with typed primitives (`Matter`, `Container`, `Action`).
-- Compile agent plans into dependency-aware protocol graphs (`ProtocolGraph`).
-- Validate constraints before execution with deterministic `dry_run()`.
-- Export a versioned machine-readable IR JSON (`ir_version=1.1.0`) for downstream runtimes.
-
-## The Tooling
-
-OpenAtoms includes:
-
-- Built-in physics validation for volume, temperature, and operation safety checks.
-- Machine-readable agent feedback via structured `PhysicsError` payloads for self-correction loops.
-- Capability profiles, stable IDs, and typed unit conversions in the core model.
-- Universal hardware adapters that compile one validated protocol to multiple execution targets.
-- Provenance metadata (IR hash, correlation ID, simulator seed/version) on each run.
-
-## Simulation Registry
-
-The Research Suite registry now tracks three science nodes:
-
-| Node | Domain | Goal | Platform |
-| --- | --- | --- | --- |
-| Node A: Bio-Kinetic | Biotech | Pipetting accuracy, deck collisions, molarity tracking | `opentrons.simulate` |
-| Node B: Thermo-Kinetic | Chemistry | `dT/dt` lag, exothermic safety, Gibbs free-energy evolution | Cantera |
-| Node C: Contact-Kinetic | Robotics | Torque, friction, vial-shattering thresholds | MuJoCo (planned) |
-
-Current registry implementation lives in `openatoms/sim/registry/`:
-- `kinetics_sim.py`: Cantera-backed `VirtualReactor` for hydrogen-oxygen combustion.
-- `opentrons_sim.py`: Opentrons protocol simulation wrapper with structured deck-boundary errors.
-
-All registry simulations emit a `StateObservation` JSON payload.
-
-## 🔬 The Science Research Protocol
-OpenAtoms is not a calculator; it is a **Proprioceptive Bridge** for AI Agents.
-
-* **Nervous System for AI:** Agents currently lack "physical common sense." OpenAtoms simulations provide an observation loop where constraints (collisions, heat-up times) act as a nervous system.
-* **Stochastic Robustness:** We inject "Real World Noise" into simulations. If a protocol fails with ±2% sensor variance, it's not research-ready.
-* **Sim-to-Real Trust:** A $100k robot should never be an LLM's "first try." OpenAtoms enforces a Mandatory Digital Twin Pass (MDTP) to ensure hardware safety.
-* **Deterministic Provenance:** Every experiment generates a machine-readable DAG, solving the Reproducibility Crisis by recording every physical variable in the "State Snapshot."
+| Metric | Value |
+| --- | --- |
+| Baseline violation rate | 0.8000 |
+| OpenAtoms violation rate | 0.0000 |
+| Relative violation reduction | 1.0000 |
+| Chi-squared (df=1) | 26.6667 |
+| p-value | 0.000000 |
+| Cohen's h | 2.2143 |
+| Cost per valid protocol | 1620.00 |
 
 ## Quick Start
-
-```python
-from openatoms.core import Matter, Container, Phase
-from openatoms.actions import Move
-from openatoms.dag import ProtocolGraph
-
-a = Container("A", max_volume_ml=100, max_temp_c=100)
-b = Container("B", max_volume_ml=100, max_temp_c=100)
-a.contents.append(Matter("H2O", Phase.LIQUID, mass_g=10, volume_ml=10))
-
-graph = ProtocolGraph("Hello_Atoms")
-graph.add_step(Move(a, b, 5))
-graph.dry_run()
-print(graph.export_json())
-
-# Science-mode dry run (Cantera/Opentrons hooks)
-graph.dry_run(mode="science")
-```
-
-Run examples:
-
-```bash
-python examples/hello_atoms.py
-python examples/openai_tool_calling.py
-python examples/research_loop.py
-```
-
-## Onboarding Path
-
-1. `hello world`:
 ```bash
 python examples/hello_atoms.py
 ```
 
-2. `simulated run`:
-```bash
-python examples/openai_tool_calling.py
-```
+## Current Limitations
+- Thermo node currently uses deterministic Cantera-backed endpoint interpolation for performance; it is not a full stiff ODE reactor net in this environment.
+- MuJoCo integration is optional; when unavailable, Node C falls back to analytical dynamics checks.
+- Gibbs feasibility is mechanism-dependent; if species are absent in the selected Cantera mechanism, OpenAtoms returns a reaction-feasibility error.
+- Hardware adapters are translation-focused in this repo; production deployments still require environment-specific credentials and device-side validation.
 
-3. `real device run` translation:
-```bash
-python examples/basic_compilation.py
-```
-
-## Release and Trust Signals
-
-- Security policy: `SECURITY.md`
-- Contribution guide: `CONTRIBUTING.md`
-- Support channels: `SUPPORT.md`
-- Version history: `CHANGELOG.md`
-- Upgrade guidance: `UPGRADE.md`
-
-## Repository Layout
-
-```text
-openatoms/   # Core compiler, actions, adapters, and tool schemas
-openatoms/sim/registry/  # Science simulation registry (Cantera + Opentrons)
-examples/    # Minimal and agent-loop integration examples
-tests/       # Validation test suite
+## Citation
+```bibtex
+@misc{openatoms2026,
+  title        = {OpenAtoms: Deterministic Validation Layer for AI-Generated Physical Protocols},
+  author       = {OpenAtoms Contributors},
+  year         = {2026},
+  howpublished = {\url{https://github.com/abdulrahimiqbal/OpenAtoms}},
+  note         = {Version 0.2.0}
+}
 ```

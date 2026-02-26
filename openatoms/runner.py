@@ -77,9 +77,15 @@ class ProtocolRunner:
             simulation_gate = self.simulation_harness.run(dag=dag, run_context=run_context)
             if simulation_gate["status"] != "ok":
                 raise PhysicsError(
-                    message="Simulation gate failed; execution blocked.",
-                    error_type="SimulationGateFailed",
-                    details={"observation": simulation_gate["observation"]},
+                    error_code="SIM_002",
+                    constraint_type="ordering",
+                    description="Simulation gate failed; execution blocked.",
+                    actual_value=simulation_gate["observation"],
+                    limit_value="status=ok",
+                    remediation_hint=(
+                        "Adjust protocol parameters until simulation gate returns "
+                        "status=ok."
+                    ),
                 )
 
         last_error: Optional[Exception] = None
