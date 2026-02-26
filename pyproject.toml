@@ -10,7 +10,7 @@ authors = [
 ]
 description = "OpenAtoms is a deterministic compiler that translates AI intent into validated physical execution."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = { file = "LICENSE" }
 keywords = ["physical-ai", "compiler", "robotics", "automation", "deterministic-systems"]
 classifiers = [
@@ -58,6 +58,9 @@ science = [
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
+markers = [
+  "requires_cantera: tests/examples that require cantera optional dependency",
+]
 
 [tool.setuptools.package-data]
 openatoms = ["ir/*.json"]
@@ -67,13 +70,13 @@ include = ["openatoms*", "eval*"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py39"
+target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B"]
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.10"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false

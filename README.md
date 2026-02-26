@@ -1,95 +1,104 @@
 # OpenAtoms
 
-## What It Does
-OpenAtoms takes an AI-generated protocol plan, compiles it into a deterministic `ProtocolGraph`, validates hard physical invariants (volume, thermal safety, and mass conservation), optionally runs domain simulators (bio-kinetic, thermo-kinetic, contact-kinetic), and emits versioned, hash-addressable IR JSON for reproducible execution and agent feedback loops.
-
-## Why It Matters
-Example: an agent proposes aspirating `200 uL` from a well that contains `150 uL`. Without validation this becomes a runtime liquid-handling fault; OpenAtoms catches it in dry-run, returns a structured `PhysicsError` with an actionable remediation hint, and the corrected transfer volume then passes simulation.
-
-## Architecture
-```text
-LLM / Tool Agent
-      |
-      v
-ProtocolGraph (typed actions + dependencies)
-      |
-      v
-Deterministic Validators
-(volume, thermal, mass, ordering)
-      |
-      v
-Simulation Registry
-  - Node A: OT2Simulator
-  - Node B: VirtualReactor (Cantera-backed thermodynamics)
-  - Node C: RoboticsSimulator (MuJoCo-aware fallback)
-      |
-      v
-StateObservation + PhysicsError(remediation_hint)
-      |
-      v
-LLM correction loop / exported IR JSON (v1.1.0)
-```
-
-## Three Simulation Nodes
-Node A (`openatoms/sim/registry/opentrons_sim.py`) is a deterministic safety gate for pipetting invariants: aspiration availability, deck layout collisions, and per-well dispense accounting. It does not model fluid dynamics or meniscus behavior. Concentrations can be tracked with `MolarityTracker` in [`examples/node_a_bio_kinetic.py`](examples/node_a_bio_kinetic.py).
-
-Node B (`openatoms/sim/registry/kinetics_sim.py`) provides deterministic thermo safety checks using Cantera equilibrium anchors plus interpolated trajectories (`dT/dt` runaway gate + Gibbs feasibility). It is not a full stiff ODE reactor-network solver. Demonstrations are in [`examples/node_b_thermo_kinetic.py`](examples/node_b_thermo_kinetic.py).
-
-Node C (`openatoms/sim/registry/robotics_sim.py`) provides deterministic manipulation safety checks (grasp force, vial contact stress, torque and collision envelope checks). Optional MuJoCo mode is availability-aware but does not claim full rigid-body certification fidelity. Demonstrations are in [`examples/node_c_contact_kinetic.py`](examples/node_c_contact_kinetic.py).
-
-## Benchmark Results
-Source: [`eval/results/BENCHMARK_REPORT.md`](eval/results/BENCHMARK_REPORT.md)
-
-| Metric | Value |
-| --- | --- |
-| Baseline violation rate | 0.760000 |
-| With validators violation rate | 0.045000 |
-| Relative violation reduction | 0.940789 |
-
-Reproduce benchmark artifacts deterministically:
-
-```bash
-python -m eval.run_benchmark --seed 123 --n 200
-```
-
-This regenerates:
-- `eval/results/raw_runs.jsonl`
-- `eval/results/summary.json`
-- `eval/results/BENCHMARK_REPORT.md`
+OpenAtoms compiles AI-proposed lab actions into deterministic protocol IR, validates hard safety invariants, and executes optional simulator safety gates before hardware execution.
 
 ## Installation
+
+Core + developer tooling:
+
 ```bash
 python -m pip install -e ".[dev]"
 ```
 
 Optional simulator extras:
-- Cantera only: `python -m pip install -e ".[sim-cantera]"`
-- MuJoCo only: `python -m pip install -e ".[sim-mujoco]"`
-- All simulator extras: `python -m pip install -e ".[sim-all]"`
 
-## Quick Start
 ```bash
-python examples/hello_atoms.py
+python -m pip install -e ".[sim-cantera]"   # thermo-kinetic node
+python -m pip install -e ".[sim-mujoco]"    # robotics node
+python -m pip install -e ".[sim-all]"       # all optional simulators
 ```
 
-## Current Limitations
-- Thermo node currently uses deterministic Cantera-backed endpoint interpolation for performance; it is not a full stiff ODE reactor net in this environment.
-- MuJoCo integration is optional; when unavailable, Node C falls back to analytical dynamics checks.
-- Gibbs feasibility is mechanism-dependent; if species are absent in the selected Cantera mechanism, OpenAtoms returns a reaction-feasibility error.
-- Hardware adapters are translation-focused in this repo; production deployments still require environment-specific credentials and device-side validation.
+## Minimal Hello Protocol
 
-## Citation
-```bibtex
-@misc{openatoms2026,
-  title        = {OpenAtoms: Deterministic Validation Layer for AI-Generated Physical Protocols},
-  author       = {OpenAtoms Contributors},
-  year         = {2026},
-  howpublished = {\url{https://github.com/abdulrahimiqbal/OpenAtoms}},
-  note         = {Version 0.2.0}
-}
+```bash
+python - <<'PY'
+from openatoms.actions import Move
+from openatoms.core import Container, Matter, Phase
+from openatoms.dag import ProtocolGraph
+from openatoms.units import Q_
+
+a = Container(id="A", label="A", max_volume=Q_(500, "microliter"), max_temp=Q_(100, "degC"), min_temp=Q_(0, "degC"))
+b = Container(id="B", label="B", max_volume=Q_(500, "microliter"), max_temp=Q_(100, "degC"), min_temp=Q_(0, "degC"))
+a.contents.append(Matter(name="H2O", phase=Phase.LIQUID, mass=Q_(200, "milligram"), volume=Q_(200, "microliter")))
+
+g = ProtocolGraph("hello_protocol")
+g.add_step(Move(a, b, Q_(100, "microliter")))
+g.dry_run()
+print(g.export_json())
+PY
 ```
 
-## Release and DOI
-- Release checklist: [`RELEASE_CHECKLIST.md`](RELEASE_CHECKLIST.md)
-- Zenodo setup guide: [`docs/ZENODO.md`](docs/ZENODO.md)
-- Citation metadata: [`CITATION.cff`](CITATION.cff), [`.zenodo.json`](.zenodo.json)
+## IR Schema and Validation Contract
+
+- Canonical runtime interface: `openatoms.ir.validate_ir`, `openatoms.ir.load_schema`, `openatoms.ir.schema_version`, `openatoms.ir.schema_resource_name`.
+- Canonical schema resource: `openatoms/ir/schema_v1_1_0.json`.
+- Legacy schema helpers (`get_schema_version`, `get_schema_path`, `schema_path`) are deprecated wrappers.
+- Invalid payloads return stable `IRValidationError` codes (`IR_TYPE`, `IR_VERSION`, `IR_MISSING_FIELD`, `IR_SCHEMA_VALIDATION`).
+
+### Versioning policy
+
+- Backward-incompatible IR changes require a new schema version and resource filename.
+- Runtime code must reference exactly one canonical schema resource.
+- Deprecations keep wrapper entrypoints for one minor line before removal.
+
+## Determinism Guarantees
+
+- IR serialization is canonical (`sorted keys`, compact separators, stable SHA-256 hashing).
+- Benchmark artifacts are deterministic for fixed `(seed, n, suite, injection_probability)`:
+  - `raw_runs.jsonl`
+  - `summary.json`
+  - `BENCHMARK_REPORT.md`
+- Reproducibility check:
+
+```bash
+python scripts/verify_reproducibility.py
+```
+
+If `cantera` is missing:
+- CI exits nonzero.
+- Local runs may skip only with `OPENATOMS_ALLOW_SKIP=1`.
+
+## Simulator Safety Contracts
+
+- Node A (`OT2Simulator`): guarantees deterministic pipetting/deck safety checks; does **not** model meniscus/fluid dynamics.
+- Node B (`VirtualReactor`): guarantees deterministic thermo safety gating from Cantera-backed endpoints; does **not** claim full publication-grade reactor-network fidelity.
+- Node C (`RoboticsSimulator`): guarantees deterministic analytical grasp/stress/torque/collision checks; MuJoCo mode is optional and not a certification claim.
+
+## Benchmark Reproduction
+
+```bash
+python -m eval.run_benchmark --seed 123 --n 200 --suite realistic --violation-probability 0.1
+```
+
+Benchmark suites:
+- `realistic`: plausible operating ranges, low violation injection.
+- `stress`: edge-heavy ranges, higher violation injection.
+- `fuzz`: edge-biased deterministic fuzz ranges.
+
+### What benchmark metrics mean
+
+- Detection: TP/FP/FN/TN and Wilson confidence intervals.
+- Correction: successful remediation rate (valid + intent-proxy preserving) and confidence intervals.
+
+### What benchmark metrics do not mean
+
+- They are not hardware calibration accuracy.
+- They are not proof of end-to-end robotic execution safety.
+- They are not substitutes for human review, SOP checks, or interlock validation.
+
+## Security, Safety, and Release
+
+- Security reporting: [SECURITY.md](SECURITY.md)
+- Operational safety boundaries: [SAFETY.md](SAFETY.md)
+- Release process: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md)
+- Change history: [CHANGELOG.md](CHANGELOG.md)

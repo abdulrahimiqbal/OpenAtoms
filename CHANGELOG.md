@@ -2,6 +2,36 @@
 
 All notable changes to this project are documented in this file.
 
+## [Unreleased] - 2026-02-26
+
+### Added
+
+- Wheel/install smoke tests that build local wheels and validate packaged IR schema loading/validation.
+- CI matrix jobs for `core`, `sim-cantera`, and optional `sim-mujoco`.
+- Reproducibility script behavior tests for CI fail-closed and local skip gating.
+- Benchmark suite redesign (`realistic`, `stress`, `fuzz`) with probabilistic violation injection and deterministic artifacts.
+- Detection/correction benchmark metrics with confidence intervals.
+- `SAFETY.md` with operational safety boundaries and required human oversight.
+
+### Changed
+
+- Canonical IR API now exposes `schema_version()` and `schema_resource_name()` in `openatoms.ir`.
+- Runtime benchmark metadata now records schema resource name and suite/injection definitions.
+- `verify_reproducibility.py` now fails in CI when Cantera is unavailable and only allows local skip via `OPENATOMS_ALLOW_SKIP=1`.
+- Gibbs feasibility no longer relies on undocumented `N2 -> N` fallback behavior.
+
+### Breaking changes / deprecations
+
+- Deprecated wrappers: `openatoms.ir.get_schema_version()` and `openatoms.ir.get_schema_path()`. Use `schema_version()` and `schema_resource_name()`.
+- Removed undocumented chemistry fallback for unsupported species in Gibbs feasibility checks; unsupported species now raise `ReactionFeasibilityError`.
+
+### Verification
+
+- `pytest -q`: passed
+- `python examples/hello_atoms.py`: passed
+- `python scripts/verify_reproducibility.py`: passed
+- `python -m build`: passed
+
 ## [0.2.0] - 2026-02-26
 
 ### Added

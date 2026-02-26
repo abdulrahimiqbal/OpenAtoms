@@ -53,39 +53,33 @@ def demo_1_thermal_runaway(reactor: VirtualReactor) -> None:
 
 def demo_2_gibbs_feasibility(reactor: VirtualReactor) -> None:
     print("\n=== DEMO 2: Gibbs Infeasibility ===")
+    try:
+        reactor.check_gibbs_feasibility(
+            reactants={"N2": 1.0},
+            products={"N": 2.0},
+            T=Q_(300, "kelvin"),
+            P=Q_(1, "atm"),
+        )
+        raise RuntimeError("Expected unsupported-species feasibility error but none was raised.")
+    except ReactionFeasibilityError as error:
+        print("Caught ReactionFeasibilityError:")
+        print(error.to_agent_payload())
+
     spontaneous, delta_g = reactor.check_gibbs_feasibility(
-        reactants={"N2": 1.0},
-        products={"N": 2.0},
+        reactants={"H2": 1.0, "O2": 0.5},
+        products={"H2O": 1.0},
         T=Q_(300, "kelvin"),
         P=Q_(1, "atm"),
     )
-
-    if spontaneous:
-        raise RuntimeError("Expected N2 -> 2N to be non-spontaneous at 300 K.")
-
-    error = ReactionFeasibilityError(
-        description="Proposed N2 dissociation is non-spontaneous at 300 K.",
-        actual_value=f"{delta_g.to('kilojoule/mole').magnitude:.3f} kJ/mol",
-        limit_value="<= 0 kJ/mol for spontaneous reaction",
-        remediation_hint=(
-            "Increase temperature substantially or use plasma/catalytic activation before "
-            "proposing nitrogen dissociation."
-        ),
+    print(
+        json.dumps(
+            {
+                "combustion_delta_g_kJ_per_mol": round(delta_g.to("kilojoule/mole").magnitude, 3),
+                "spontaneous_at_300K": spontaneous,
+            },
+            indent=2,
+        )
     )
-    print("Caught ReactionFeasibilityError:")
-    print(error.to_agent_payload())
-
-    spontaneous_hot, delta_g_hot = reactor.check_gibbs_feasibility(
-        reactants={"N2": 1.0},
-        products={"N": 2.0},
-        T=Q_(5000, "kelvin"),
-        P=Q_(1, "atm"),
-    )
-    print(json.dumps({
-        "delta_g_300K_kJ_per_mol": round(delta_g.to("kilojoule/mole").magnitude, 3),
-        "delta_g_5000K_kJ_per_mol": round(delta_g_hot.to("kilojoule/mole").magnitude, 3),
-        "spontaneous_at_5000K": spontaneous_hot,
-    }, indent=2))
 
 
 def demo_3_pressure_safety(reactor: VirtualReactor) -> None:

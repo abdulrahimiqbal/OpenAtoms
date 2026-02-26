@@ -95,16 +95,37 @@ def apply_validator_repairs(protocol: dict[str, Any]) -> dict[str, Any]:
     source = max(int(repaired["source_volume_ul"]), 1)
     capacity = max(int(repaired["destination_capacity_ul"]), 1)
     destination_start = int(repaired["destination_start_ul"])
-    destination_start = min(max(destination_start, 0), max(capacity - 1, 0))
-    available_room = max(capacity - destination_start, 1)
+    destination_start = min(max(destination_start, 0), max(capacity - 2, 0))
+    available_room = max(capacity - destination_start - 1, 1)
 
     repaired["source_volume_ul"] = source
     repaired["destination_capacity_ul"] = capacity
     repaired["destination_start_ul"] = destination_start
     repaired["transfer_ul"] = min(max(int(repaired["transfer_ul"]), 1), source, available_room)
-    repaired["target_temp_c"] = min(
-        int(repaired["target_temp_c"]),
-        int(repaired["max_temp_c"]),
+    repaired["target_temp_c"] = max(
+        0,
+        min(
+            int(repaired["target_temp_c"]),
+            int(repaired["max_temp_c"]),
+        ),
     )
     return repaired
 
+
+def intent_proxy_preserved(original: dict[str, Any], repaired: dict[str, Any]) -> bool:
+    """Heuristic intent proxy for benchmark correction scoring."""
+    if original.get("protocol_id") != repaired.get("protocol_id"):
+        return False
+
+    transfer_original = int(original["transfer_ul"])
+    transfer_repaired = int(repaired["transfer_ul"])
+    transfer_tolerance = max(5, int(round(0.10 * max(abs(transfer_original), 1))))
+
+    temp_original = int(original["target_temp_c"])
+    temp_repaired = int(repaired["target_temp_c"])
+    temp_tolerance = 10
+
+    return (
+        abs(transfer_repaired - transfer_original) <= transfer_tolerance
+        and abs(temp_repaired - temp_original) <= temp_tolerance
+    )

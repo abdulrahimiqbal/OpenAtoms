@@ -133,6 +133,22 @@ def test_virtual_reactor_contract_is_deterministic(monkeypatch) -> None:
     assert first == second
 
 
+def test_virtual_reactor_missing_cantera_has_install_hint(monkeypatch) -> None:
+    import builtins
+
+    original_import = builtins.__import__
+
+    def fake_import(name, *args, **kwargs):
+        if name == "cantera":
+            raise ImportError("simulated missing cantera")
+        return original_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", fake_import)
+    with pytest.raises(SimulationDependencyError) as exc_info:
+        VirtualReactor._load_cantera()
+    assert 'pip install ".[sim-cantera]"' in exc_info.value.remediation_hint
+
+
 @pytest.mark.skipif(find_spec("cantera") is None, reason="requires cantera")
 def test_cantera_golden_tiny_system() -> None:
     reactor = VirtualReactor(mechanism="h2o2.yaml")

@@ -19,6 +19,7 @@ Use this checklist before creating a GitHub release tag.
 ## 2) Versioning and Changelog
 - [ ] Update version in `pyproject.toml`.
 - [ ] Update `CHANGELOG.md` with release notes and date.
+- [ ] Add explicit `Breaking changes / deprecations` subsection in `CHANGELOG.md` (or state `None`).
 - [ ] Ensure `README.md` citation version matches release version.
 
 ## 3) Build Artifacts
@@ -37,6 +38,7 @@ Use this checklist before creating a GitHub release tag.
   - `git push origin main`
   - `git push origin vX.Y.Z`
 - [ ] Confirm `.github/workflows/release.yml` ran and attached artifacts.
+- [ ] Confirm CI matrix artifacts built successfully (`core`, `sim-cantera`, optional `sim-mujoco`).
 
 ## 5) DOI and Citation
 - [ ] Ensure `.zenodo.json` metadata is accurate.

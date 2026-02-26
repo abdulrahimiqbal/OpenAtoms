@@ -34,13 +34,13 @@ def test_ot2_simulator_catches_aspiration_error() -> None:
 def test_virtual_reactor_gibbs_check_returns_expected_sign() -> None:
     reactor = VirtualReactor(mechanism="h2o2.yaml")
     spontaneous, delta_g = reactor.check_gibbs_feasibility(
-        reactants={"N2": 1.0},
-        products={"N": 2.0},
+        reactants={"H2": 1.0, "O2": 0.5},
+        products={"H2O": 1.0},
         T=Q_(300, "kelvin"),
         P=Q_(1, "atm"),
     )
-    assert spontaneous is False
-    assert delta_g.to("kilojoule/mole").magnitude > 0
+    assert spontaneous is True
+    assert delta_g.to("kilojoule/mole").magnitude < 0
 
 
 def test_robotics_simulator_flags_torque_and_collision() -> None:

@@ -44,16 +44,36 @@ class IRValidationError(ValueError):
 
 
 def get_schema_version() -> str:
+    """Deprecated schema version helper."""
+    warnings.warn(
+        "openatoms.ir.get_schema_version() is deprecated; use openatoms.ir.schema_version().",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return schema_version()
+
+
+def schema_version() -> str:
     """Return canonical IR schema version."""
     return IR_SCHEMA_VERSION
 
 
+def schema_resource_name() -> str:
+    """Return canonical schema resource filename."""
+    return SCHEMA_FILENAME
+
+
 def _schema_resource():
-    return resources.files("openatoms.ir").joinpath(SCHEMA_FILENAME)
+    return resources.files("openatoms.ir").joinpath(schema_resource_name())
 
 
 def get_schema_path() -> Path:
-    """Return filesystem path to the packaged schema resource."""
+    """Deprecated filesystem-path helper for schema resource."""
+    warnings.warn(
+        "openatoms.ir.get_schema_path() is deprecated; use openatoms.ir.schema_resource_name().",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     with resources.as_file(_schema_resource()) as schema_file:
         return Path(schema_file)
 
@@ -137,10 +157,21 @@ def validate_ir(payload: dict[str, Any]) -> dict[str, Any]:
 
     try:
         import jsonschema  # type: ignore
+    except ImportError as exc:  # pragma: no cover - dependency invariant path
+        raise IRValidationError(
+            "IR_RUNTIME_DEPENDENCY",
+            "jsonschema is required for IR validation. Install with: pip install \"openatoms[dev]\"",
+        ) from exc
 
-        jsonschema.validate(instance=payload, schema=load_schema())
-    except ImportError:
-        pass
+    validator = jsonschema.Draft7Validator(load_schema())
+    errors = sorted(validator.iter_errors(payload), key=lambda item: list(item.path))
+    if errors:
+        first = errors[0]
+        location = ".".join(str(part) for part in first.path) or "<root>"
+        raise IRValidationError(
+            "IR_SCHEMA_VALIDATION",
+            f"IR schema validation failed at {location}: {first.message}",
+        )
     return payload
 
 
@@ -167,3 +198,22 @@ def load_ir_payload(raw: str) -> dict[str, Any]:
         raise IRValidationError("IR_TYPE", "IR payload must decode to an object.")
     validate_ir(payload)
     return payload
+
+
+__all__ = [
+    "IR_SCHEMA_VERSION",
+    "IR_VERSION",
+    "IRValidationError",
+    "SUPPORTED_IR_VERSIONS",
+    "canonical_json",
+    "get_schema_path",
+    "get_schema_version",
+    "ir_hash",
+    "legacy_validate_ir",
+    "load_ir_payload",
+    "load_schema",
+    "schema_path",
+    "schema_resource_name",
+    "schema_version",
+    "validate_ir",
+]

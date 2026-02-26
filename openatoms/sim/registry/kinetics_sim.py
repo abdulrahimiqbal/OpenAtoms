@@ -224,13 +224,6 @@ class VirtualReactor:
         species_names = set(gas.species_names)
         unknown = [name for name in list(reactants.keys()) + list(products.keys()) if name not in species_names]
         if unknown:
-            if set(reactants.keys()) == {"N2"} and set(products.keys()) == {"N"}:
-                temperature_k = require_temperature(T).to("kelvin").magnitude
-                # Empirical dissociation trend anchor:
-                # ~+945 kJ/mol near 300 K, crosses toward spontaneous at very high T.
-                delta_g_kj_per_mol = 945.0 - 0.25 * (temperature_k - 300.0)
-                delta = Q_(delta_g_kj_per_mol, "kilojoule / mole")
-                return (delta.magnitude < 0.0, delta)
             raise ReactionFeasibilityError(
                 description="Species not found in Cantera mechanism for Gibbs feasibility check.",
                 actual_value=unknown,

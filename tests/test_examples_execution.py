@@ -13,10 +13,20 @@ EXAMPLE_CASES = [
     ("basic_compilation.py", None, "[Runner -> OpentronsAdapter]"),
     ("hello_atoms.py", None, '"ir_version": "1.1.0"'),
     ("node_a_bio_kinetic.py", None, '"simulation_success": true'),
-    ("node_b_thermo_kinetic.py", "cantera", "Caught ThermalExcursionError"),
+    pytest.param(
+        "node_b_thermo_kinetic.py",
+        "cantera",
+        "Caught ThermalExcursionError",
+        marks=pytest.mark.requires_cantera,
+    ),
     ("node_c_contact_kinetic.py", None, "Caught OrderingConstraintError"),
     ("openai_tool_calling.py", None, "SIMULATING LLM SELF-CORRECTION"),
-    ("research_loop.py", "cantera", "OpenAtoms Research Loop"),
+    pytest.param(
+        "research_loop.py",
+        "cantera",
+        "OpenAtoms Research Loop",
+        marks=pytest.mark.requires_cantera,
+    ),
 ]
 
 
