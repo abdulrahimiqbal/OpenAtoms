@@ -1,7 +1,0 @@
-pint>=0.25,<1
-pydantic>=2,<3
-cantera>=3,<4
-hypothesis>=6,<7
-pytest>=9,<10
-pytest-cov>=7,<8
-jsonschema>=4,<5

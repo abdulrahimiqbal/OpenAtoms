@@ -27,17 +27,28 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-science = [
-  "cantera>=3,<4",
-  "opentrons>=7,<8",
-]
 dev = [
   "build>=1.2.0",
-  "hypothesis>=6,<7",
-  "mypy>=1.8.0",
   "pytest>=9,<10",
-  "pytest-cov>=7,<8",
   "ruff>=0.4.0",
+  "mypy>=1.8.0",
+  "hypothesis>=6,<7",
+  "pytest-cov>=7,<8",
+  "twine>=5,<6",
+]
+sim-cantera = [
+  "cantera>=3,<4",
+]
+sim-mujoco = [
+  "mujoco>=3,<4",
+]
+sim-all = [
+  "cantera>=3,<4",
+  "mujoco>=3,<4",
+]
+# Backward-compatible legacy alias.
+science = [
+  "cantera>=3,<4",
 ]
 
 [project.urls]
@@ -49,7 +60,10 @@ dev = [
 pythonpath = ["."]
 
 [tool.setuptools.package-data]
-openatoms = ["schemas/*.json", "ir/*.json"]
+openatoms = ["ir/*.json"]
+
+[tool.setuptools.packages.find]
+include = ["openatoms*", "eval*"]
 
 [tool.ruff]
 line-length = 100
