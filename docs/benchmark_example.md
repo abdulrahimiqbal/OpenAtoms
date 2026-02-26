@@ -1,6 +1,8 @@
 # BENCHMARK REPORT (EXAMPLE)
 
-This file is an example format only. Regenerate real artifacts locally with:
+This file is an example format only.
+Example produced on 2026-02-26 at commit `135d6f24bc099504dcd1b0e957551f67a631933a`.
+Regenerate real artifacts locally with:
 
 ```bash
 python -m eval.run_benchmark --seed 123 --n 200 --suite realistic --violation-probability 0.1

@@ -6,6 +6,7 @@ __pycache__/
 stage0_logs/
 build/
 dist/
-eval/results/raw_runs.jsonl
-eval/results/summary.json
+eval/results/*.json
+eval/results/*.jsonl
 eval/results/BENCHMARK_REPORT.md
+!eval/results/.gitkeep

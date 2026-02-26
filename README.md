@@ -81,7 +81,7 @@ python -m eval.run_benchmark --seed 123 --n 200 --suite realistic --violation-pr
 ```
 
 Generated outputs are written to `eval/results/` and are not committed to git. See
-[`docs/BENCHMARK_REPORT_EXAMPLE.md`](docs/BENCHMARK_REPORT_EXAMPLE.md) for an example layout.
+[`docs/benchmark_example.md`](docs/benchmark_example.md) for an example layout.
 
 Benchmark suites:
 - `realistic`: plausible operating ranges, low violation injection.

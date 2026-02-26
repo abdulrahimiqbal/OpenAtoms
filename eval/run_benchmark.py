@@ -4,6 +4,7 @@ import argparse
 import json
 import math
 import subprocess
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -76,12 +77,24 @@ def _safe_rate(numerator: int, denominator: int) -> float:
     return numerator / denominator
 
 
-def _write_report(path: Path, summary: dict[str, Any]) -> None:
+def _to_utc_timestamp(iso_datetime: str) -> str:
+    if not iso_datetime or iso_datetime == "unknown":
+        return "unknown"
+    try:
+        parsed = datetime.fromisoformat(iso_datetime)
+    except ValueError:
+        return "unknown"
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _render_report(summary: dict[str, Any]) -> str:
     baseline = summary["baseline"]
     validated = summary["with_validators"]
     detection = summary["detection"]
     correction = summary["correction"]
-    lines = [
+    lines: list[str] = [
         "# BENCHMARK REPORT",
         "",
         f"- Date: {summary['date']}",
@@ -141,7 +154,12 @@ def _write_report(path: Path, summary: dict[str, Any]) -> None:
         ),
         "",
     ]
-    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return "\n".join(lines) + "\n"
+
+
+def _write_report_from_summary(summary_path: Path, report_path: Path) -> None:
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    report_path.write_text(_render_report(summary), encoding="utf-8")
 
 
 def run_benchmark(
@@ -256,12 +274,13 @@ def run_benchmark(
         },
         "git_commit": git_commit,
         "n": n,
+        "injection_probability": generation.violation_probability,
         "repo_commit": git_commit,
         "relative_violation_reduction": round(reduction, 6),
         "schema_resource": get_schema_resource_name(),
         "schema_version": schema_version(),
         "seed": seed,
-        "timestamp_utc": commit_timestamp,
+        "timestamp_utc": _to_utc_timestamp(commit_timestamp),
         "suite": {
             "description": generation.suite_description,
             "injection_method": generation.injection_method,
@@ -287,7 +306,7 @@ def run_benchmark(
             handle.write(json.dumps(row, sort_keys=True, separators=(",", ":")) + "\n")
 
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    _write_report(report_path, summary)
+    _write_report_from_summary(summary_path, report_path)
     return summary
 
 
@@ -297,7 +316,7 @@ def main() -> None:
     parser.add_argument("--n", type=int, default=200)
     parser.add_argument("--suite", choices=sorted(SUITES.keys()), default="realistic")
     parser.add_argument("--violation-probability", type=float, default=None)
-    parser.add_argument("--output-dir", type=Path, default=Path("eval/results"))
+    parser.add_argument("--outdir", "--output-dir", dest="output_dir", type=Path, default=Path("eval/results"))
     args = parser.parse_args()
 
     summary = run_benchmark(
