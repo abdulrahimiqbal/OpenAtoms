@@ -33,6 +33,8 @@ IR_VERSION = "1.1.0"
 IR_SCHEMA_VERSION = "1.1.0"
 SUPPORTED_IR_VERSIONS = {"1.1.0"}
 SCHEMA_FILENAME = "schema_v1_1_0.json"
+# Backward-compatible alias from legacy module API.
+IR_SCHEMA_FILE = SCHEMA_FILENAME
 
 
 class IRValidationError(ValueError):
@@ -195,6 +197,16 @@ def legacy_validate_ir(payload: dict[str, Any]) -> dict[str, Any]:
     return validate_ir(payload)
 
 
+def validate_protocol_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    """Deprecated legacy validator wrapper."""
+    warnings.warn(
+        "openatoms.ir.validate_protocol_payload() is deprecated; use openatoms.ir.validate_ir().",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return validate_ir(payload)
+
+
 def load_ir_payload(raw: str) -> dict[str, Any]:
     """Load and validate serialized IR payload.
 
@@ -211,6 +223,7 @@ def load_ir_payload(raw: str) -> dict[str, Any]:
 
 
 __all__ = [
+    "IR_SCHEMA_FILE",
     "IR_SCHEMA_VERSION",
     "IR_VERSION",
     "IRValidationError",
@@ -226,5 +239,6 @@ __all__ = [
     "schema_path",
     "schema_resource_name",
     "schema_version",
+    "validate_protocol_payload",
     "validate_ir",
 ]

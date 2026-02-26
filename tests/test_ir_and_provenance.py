@@ -19,6 +19,7 @@ from openatoms.ir import (
     load_schema,
     schema_resource_name,
     schema_version,
+    validate_protocol_payload,
     validate_ir,
 )
 from openatoms.ir.provenance import attach_ir_hash
@@ -86,6 +87,15 @@ def test_legacy_and_canonical_validation_match() -> None:
         legacy = legacy_validate_ir(payload)
 
     assert canonical == legacy
+    assert any(issubclass(item.category, DeprecationWarning) for item in caught)
+
+
+def test_legacy_validate_protocol_payload_forwards() -> None:
+    payload = _payload()
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        legacy = validate_protocol_payload(payload)
+    assert legacy == validate_ir(payload)
     assert any(issubclass(item.category, DeprecationWarning) for item in caught)
 
 
