@@ -55,3 +55,40 @@ Verification commands and outcomes:
 
 - `. .venv/bin/activate && python -m pip install -e ".[dev]"` -> success
 - `. .venv/bin/activate && python -m pytest -q` -> `21 passed, 10 warnings`
+
+## Issue 2 updates (single IR schema system)
+
+Inventory before refactor:
+
+- Schema files under `openatoms/`:
+  - `openatoms/ir/schema_v1_1_0.json`
+  - `openatoms/schemas/ir-1.1.0.schema.json`
+- Validation entrypoints:
+  - `openatoms.ir.validate_ir(...)`
+  - `openatoms.ir.load_ir_payload(...)`
+
+Changes made:
+
+- Removed duplicate schema file `openatoms/schemas/ir-1.1.0.schema.json`.
+- Canonicalized IR schema interface in `openatoms.ir`:
+  - `validate_ir(payload) -> dict`
+  - `get_schema_version() -> str`
+  - `get_schema_path() -> Path`
+- Switched schema loading to `importlib.resources`.
+- Added stable `IRValidationError` with error codes.
+- Kept legacy entrypoints as thin wrappers:
+  - `schema_path()` now warns and delegates to `get_schema_path()`.
+  - `legacy_validate_ir()` now warns and delegates to `validate_ir()`.
+- Added tests for:
+  - legacy-vs-canonical validation parity
+  - schema version/path consistency
+  - stable invalid-payload code/message
+  - runtime introspection that canonical schema resource is used
+
+Verification commands and outcomes:
+
+- `. .venv/bin/activate && python -m pytest -q` -> `24 passed, 10 warnings`
+- `. .venv/bin/activate && python examples/hello_atoms.py` -> success
+- `. .venv/bin/activate && python examples/basic_compilation.py` -> fails (tracked under Issue 3 API drift)
+- `. .venv/bin/activate && python examples/openai_tool_calling.py` -> fails (tracked under Issue 3 API drift)
+- `. .venv/bin/activate && python scripts/verify_reproducibility.py` -> success
