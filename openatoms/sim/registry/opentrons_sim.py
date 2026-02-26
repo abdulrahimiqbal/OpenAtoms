@@ -1,4 +1,4 @@
-"""Bio-kinetic simulation wrapper for Opentrons-compatible protocols.
+"""Bio-kinetic safety-gate simulation for Opentrons-compatible protocols.
 
 Example:
     >>> from openatoms.actions import Move
@@ -48,7 +48,7 @@ SLOT_COORDS = {
 
 
 class OT2Simulator:
-    """Run ProtocolGraph logic through Opentrons-compatible simulation checks."""
+    """Run deterministic pipetting/geometry checks, not full microfluidic physics."""
 
     def compile_to_otprotocol(self, graph: ProtocolGraph) -> str:
         """Compile ProtocolGraph into executable Opentrons Python protocol text."""

@@ -1,4 +1,4 @@
-"""Thermo-kinetic simulation registry backed by Cantera.
+"""Thermo-kinetic safety-gate simulation backed by Cantera.
 
 Example:
     >>> from openatoms.sim.registry.kinetics_sim import VirtualReactor
@@ -28,7 +28,13 @@ class Vessel:
 
 
 class VirtualReactor:
-    """Cantera-backed reactor simulation utilities."""
+    """Cantera-backed safety checks with deterministic trajectory interpolation.
+
+    Scope:
+    - Uses Cantera equilibrium endpoints for physically grounded trends.
+    - Uses deterministic interpolation between endpoints for robust CI/runtime behavior.
+    - Not a full stiff ODE reactor-network solver for publication-grade kinetics.
+    """
 
     def __init__(self, mechanism: str = "h2o2.yaml") -> None:
         self.mechanism = mechanism
@@ -38,7 +44,7 @@ class VirtualReactor:
         try:
             import cantera as ct  # type: ignore
         except ImportError as exc:  # pragma: no cover - optional dependency path
-            raise SimulationDependencyError("cantera", str(exc)) from exc
+            raise SimulationDependencyError("cantera", str(exc), extra="sim-cantera") from exc
         return ct
 
     @staticmethod

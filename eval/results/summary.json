@@ -10,7 +10,7 @@
     "violations": 152
   },
   "date": "2026-02-26",
-  "git_commit": "9fa5f9790cfd524acfa91a50d582ca099a7b20be",
+  "git_commit": "49dc8296b0d94950e12f788f8aff2749b7761e3e",
   "n": 200,
   "relative_violation_reduction": 0.940789,
   "schema_path": "/Users/rahim/Downloads/OpenAtoms/openatoms/ir/schema_v1_1_0.json",

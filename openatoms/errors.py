@@ -149,7 +149,11 @@ class ReactionFeasibilityError(PhysicsError):
 class SimulationDependencyError(PhysicsError):
     """Raised when optional simulation dependencies are unavailable."""
 
-    def __init__(self, dependency: str, import_error: str):
+    def __init__(self, dependency: str, import_error: str, *, extra: str | None = None):
+        if extra:
+            remediation = f'Install optional simulator extras: pip install ".[{extra}]"'
+        else:
+            remediation = f"Install {dependency} and retry the simulation."
         super().__init__(
             error_code="SIM_001",
             constraint_type="ordering",
@@ -159,5 +163,5 @@ class SimulationDependencyError(PhysicsError):
             ),
             actual_value=dependency,
             limit_value="installed dependency",
-            remediation_hint=f"Install {dependency} and retry the simulation.",
+            remediation_hint=remediation,
         )

@@ -15,7 +15,7 @@
 | with_validators | 9 / 200 | 0.045000 | [0.023852, 0.083298] |
 
 - Relative violation reduction: 0.940789
-- Git commit: 9fa5f9790cfd524acfa91a50d582ca099a7b20be
+- Git commit: 49dc8296b0d94950e12f788f8aff2749b7761e3e
 
 ## Reproduction
 

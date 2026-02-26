@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from typing import Literal, Optional
 
-from ...errors import OrderingConstraintError, PhysicsError
+from ...errors import OrderingConstraintError, PhysicsError, SimulationDependencyError
 from ...units import Quantity, Q_, require_quantity
 from ..types import GraspFeasibilityResult, Pose, TrajectoryResult
 
@@ -26,7 +26,13 @@ except ImportError:  # pragma: no cover - environment dependent
 
 
 class RoboticsSimulator:
-    """Wrap MuJoCo with analytical fallbacks for lab manipulation checks."""
+    """Deterministic manipulation safety checks with optional MuJoCo-aware mode.
+
+    Scope:
+    - Guarantees deterministic analytic checks for grasp, stress, torque, and collision envelopes.
+    - MuJoCo mode is used as an availability marker plus shared deterministic checks.
+    - Does not claim full rigid-body dynamics fidelity for real robot certification.
+    """
 
     YIELD_STRESS = {
         "glass": Q_(50.0, "megapascal"),
@@ -110,9 +116,21 @@ class RoboticsSimulator:
         self,
         waypoints: list[Pose],
         payload_mass: Quantity,
+        mode: Literal["auto", "analytical", "mujoco"] = "auto",
     ) -> TrajectoryResult:
-        """Run MuJoCo dynamics when available, else analytical checks."""
-        if MUJOCO_AVAILABLE:
+        """Run deterministic trajectory safety checks with selectable execution mode."""
+        if mode == "mujoco":
+            if not MUJOCO_AVAILABLE:
+                raise SimulationDependencyError(
+                    "mujoco",
+                    "Package not installed",
+                    extra="sim-mujoco",
+                )
+            result = self._analytical_trajectory(waypoints, payload_mass)
+            result.mode = "mujoco+analytical"
+        elif mode == "analytical":
+            result = self._analytical_trajectory(waypoints, payload_mass)
+        elif MUJOCO_AVAILABLE:
             # Minimal MuJoCo path: run a tiny free-joint model and return analytical metrics
             # alongside a MuJoCo-mode marker to indicate dynamic engine availability.
             result = self._analytical_trajectory(waypoints, payload_mass)

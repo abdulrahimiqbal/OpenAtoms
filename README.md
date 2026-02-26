@@ -31,24 +31,41 @@ LLM correction loop / exported IR JSON (v1.1.0)
 ```
 
 ## Three Simulation Nodes
-Node A (`openatoms/sim/registry/opentrons_sim.py`) validates pipetting protocols against aspiration availability, deck layout collisions, and per-well dispense accounting; concentrations can be tracked with `MolarityTracker` in [`examples/node_a_bio_kinetic.py`](examples/node_a_bio_kinetic.py).
+Node A (`openatoms/sim/registry/opentrons_sim.py`) is a deterministic safety gate for pipetting invariants: aspiration availability, deck layout collisions, and per-well dispense accounting. It does not model fluid dynamics or meniscus behavior. Concentrations can be tracked with `MolarityTracker` in [`examples/node_a_bio_kinetic.py`](examples/node_a_bio_kinetic.py).
 
-Node B (`openatoms/sim/registry/kinetics_sim.py`) provides thermo-kinetic trajectory generation, thermal runaway detection (`dT/dt` thresholding), and Gibbs-feasibility checks; demonstrations are in [`examples/node_b_thermo_kinetic.py`](examples/node_b_thermo_kinetic.py).
+Node B (`openatoms/sim/registry/kinetics_sim.py`) provides deterministic thermo safety checks using Cantera equilibrium anchors plus interpolated trajectories (`dT/dt` runaway gate + Gibbs feasibility). It is not a full stiff ODE reactor-network solver. Demonstrations are in [`examples/node_b_thermo_kinetic.py`](examples/node_b_thermo_kinetic.py).
 
-Node C (`openatoms/sim/registry/robotics_sim.py`) checks grasp force feasibility, vial contact stress vs. material yield limits, and trajectory torque/collision risks with MuJoCo-aware fallback behavior; demonstrations are in [`examples/node_c_contact_kinetic.py`](examples/node_c_contact_kinetic.py).
+Node C (`openatoms/sim/registry/robotics_sim.py`) provides deterministic manipulation safety checks (grasp force, vial contact stress, torque and collision envelope checks). Optional MuJoCo mode is availability-aware but does not claim full rigid-body certification fidelity. Demonstrations are in [`examples/node_c_contact_kinetic.py`](examples/node_c_contact_kinetic.py).
 
 ## Benchmark Results
 Source: [`eval/results/BENCHMARK_REPORT.md`](eval/results/BENCHMARK_REPORT.md)
 
 | Metric | Value |
 | --- | --- |
-| Baseline violation rate | 0.8000 |
-| OpenAtoms violation rate | 0.0000 |
-| Relative violation reduction | 1.0000 |
-| Chi-squared (df=1) | 26.6667 |
-| p-value | 0.000000 |
-| Cohen's h | 2.2143 |
-| Cost per valid protocol | 1620.00 |
+| Baseline violation rate | 0.760000 |
+| With validators violation rate | 0.045000 |
+| Relative violation reduction | 0.940789 |
+
+Reproduce benchmark artifacts deterministically:
+
+```bash
+python -m eval.run_benchmark --seed 123 --n 200
+```
+
+This regenerates:
+- `eval/results/raw_runs.jsonl`
+- `eval/results/summary.json`
+- `eval/results/BENCHMARK_REPORT.md`
+
+## Installation
+```bash
+python -m pip install -e ".[dev]"
+```
+
+Optional simulator extras:
+- Cantera only: `python -m pip install -e ".[sim-cantera]"`
+- MuJoCo only: `python -m pip install -e ".[sim-mujoco]"`
+- All simulator extras: `python -m pip install -e ".[sim-all]"`
 
 ## Quick Start
 ```bash

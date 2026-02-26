@@ -148,3 +148,40 @@ Verification commands and outcomes:
 - `. .venv/bin/activate && python -m pytest -q` -> `32 passed, 10 warnings`
 - `. .venv/bin/activate && for f in examples/*.py; do python "$f"; done` -> all examples exit `0`
 - `. .venv/bin/activate && python scripts/verify_reproducibility.py` -> `Determinism check passed: Node B output identical across 3 runs.`
+
+## Issue 5 updates (simulator scope + validation-grade tests)
+
+Simulator audit and clarified scope:
+
+- `openatoms/sim/registry/opentrons_sim.py`
+  - Promise: deterministic pipetting/deck safety checks and error taxonomy mapping.
+  - Non-claim: no full fluid dynamics / meniscus physics.
+- `openatoms/sim/registry/kinetics_sim.py`
+  - Promise: deterministic thermo safety gates using Cantera endpoints + interpolation.
+  - Non-claim: not a full stiff ODE reactor-network fidelity model.
+- `openatoms/sim/registry/robotics_sim.py`
+  - Promise: deterministic analytical checks for grasp/stress/torque/collision envelopes.
+  - Non-claim: no certification-grade full rigid-body dynamics claim.
+
+Changes made:
+
+- Added actionable optional-dependency install hints:
+  - `SimulationDependencyError(..., extra="sim-cantera" | "sim-mujoco")` emits `pip install ".[...]"` remediation.
+- Updated Cantera import guard:
+  - `VirtualReactor._load_cantera()` now raises with `sim-cantera` install hint.
+- Added explicit robotics mode selection:
+  - `simulate_arm_trajectory(..., mode="auto" | "analytical" | "mujoco")`.
+  - `mode="mujoco"` now raises `SimulationDependencyError` with `sim-mujoco` hint when missing.
+- Added simulator contract tests (`tests/test_simulator_contracts.py`) covering:
+  - deterministic outputs for OT2, VirtualReactor (mock Cantera), Robotics analytical mode
+  - stable expected error codes for known-invalid inputs
+  - optional Cantera golden test with tolerances (skip when unavailable)
+  - MuJoCo mode behavior change and missing-dependency hint path
+- Updated README with explicit simulator scope boundaries, installation extras, and benchmark reproduction commands.
+
+Verification commands and outcomes:
+
+- `. .venv/bin/activate && python -m pytest -q` -> `38 passed, 15 warnings`
+- `. .venv/bin/activate && for f in examples/*.py; do python "$f"; done` -> all examples exit `0`
+- `. .venv/bin/activate && python scripts/verify_reproducibility.py` -> `Determinism check passed: Node B output identical across 3 runs.`
+- `. .venv/bin/activate && python -m eval.run_benchmark --seed 123 --n 200` -> success
