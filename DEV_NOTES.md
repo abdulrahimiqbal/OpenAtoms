@@ -185,3 +185,17 @@ Verification commands and outcomes:
 - `. .venv/bin/activate && for f in examples/*.py; do python "$f"; done` -> all examples exit `0`
 - `. .venv/bin/activate && python scripts/verify_reproducibility.py` -> `Determinism check passed: Node B output identical across 3 runs.`
 - `. .venv/bin/activate && python -m eval.run_benchmark --seed 123 --n 200` -> success
+
+## Final verification
+
+Commands and outcomes:
+
+- `. .venv/bin/activate && python -m pip install -e ".[dev]"` -> success
+- `. .venv/bin/activate && python -m pytest -q` -> `38 passed, 15 warnings`
+- `. .venv/bin/activate && for f in examples/*.py; do python "$f"; done` -> all examples exit `0`
+- `. .venv/bin/activate && python scripts/verify_reproducibility.py` -> `Determinism check passed: Node B output identical across 3 runs.`
+- `. .venv/bin/activate && python -m eval.run_benchmark --seed 123 --n 200` -> success
+- Re-run determinism check:
+  - first `summary.json` hash: `28ec46ad0b4719f5a7250d40542a7145c4c55360278ab7721038962b64c6dc9d`
+  - second `summary.json` hash: `28ec46ad0b4719f5a7250d40542a7145c4c55360278ab7721038962b64c6dc9d`
+  - result: identical (`byte-for-byte` determinism confirmed)
