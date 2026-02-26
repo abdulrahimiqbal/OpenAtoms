@@ -1,5 +1,18 @@
 """OpenAtoms package exports."""
 
+from .api import (
+    ProtocolState,
+    SimulatorInvocation,
+    build_protocol,
+    compile_protocol,
+    create_protocol_state,
+    invoke_optional_simulator,
+    protocol_hash,
+    protocol_provenance,
+    run_dry_run,
+    serialize_ir,
+    validate_protocol_ir,
+)
 from .actions import Action, Combine, Measure, Move, Transform
 from .core import Container, Environment, Matter, Phase
 from .dag import ProtocolGraph
@@ -52,4 +65,15 @@ __all__ = [
     "OpentronsSimValidator",
     "RoboticsSimulator",
     "MUJOCO_AVAILABLE",
+    "ProtocolState",
+    "SimulatorInvocation",
+    "create_protocol_state",
+    "build_protocol",
+    "run_dry_run",
+    "compile_protocol",
+    "serialize_ir",
+    "validate_protocol_ir",
+    "invoke_optional_simulator",
+    "protocol_hash",
+    "protocol_provenance",
 ]

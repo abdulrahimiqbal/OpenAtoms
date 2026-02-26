@@ -13,9 +13,10 @@ python -m pip install -e ".[dev]"
 Optional simulator extras:
 
 ```bash
-python -m pip install -e ".[sim-cantera]"   # thermo-kinetic node
-python -m pip install -e ".[sim-mujoco]"    # robotics node
-python -m pip install -e ".[sim-all]"       # all optional simulators
+python -m pip install -e ".[cantera]"       # thermo-kinetic node
+python -m pip install -e ".[opentrons]"     # opentrons runtime simulator
+python -m pip install -e ".[mujoco]"        # robotics node
+python -m pip install -e ".[all]"           # all optional simulators
 ```
 
 ## Minimal Hello Protocol
@@ -41,7 +42,7 @@ PY
 ## IR Schema and Validation Contract
 
 - Canonical runtime interface: `openatoms.ir.validate_ir`, `openatoms.ir.load_schema`, `openatoms.ir.schema_version`, `openatoms.ir.get_schema_resource_name`.
-- Canonical schema resource: `openatoms/ir/schema_v1_1_0.json`.
+- Canonical schema resource: `openatoms/schemas/ir.schema.json`.
 - Legacy schema helpers (`get_schema_version`, `get_schema_path`, `schema_path`) are deprecated wrappers.
 - Invalid payloads return stable `IRValidationError` codes (`IR_TYPE`, `IR_VERSION`, `IR_MISSING_FIELD`, `IR_SCHEMA_VALIDATION`).
 

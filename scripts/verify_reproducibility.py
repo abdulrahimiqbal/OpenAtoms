@@ -33,7 +33,7 @@ def _cantera_available() -> bool:
 def _handle_missing_cantera() -> int:
     message = (
         "Determinism check unavailable: optional dependency 'cantera' is not installed. "
-        "Install with: pip install \".[sim-cantera]\"."
+        "Install with: pip install \".[cantera]\"."
     )
     if _is_ci():
         print(f"{message} Failing because OPENATOMS_CI=1 requires deterministic thermo validation.")

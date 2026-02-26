@@ -23,8 +23,30 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
 
+      - name: Lint (ruff)
+        run: |
+          ruff check \
+            openatoms/api.py \
+            scripts/generate_interface_report.py \
+            tests/test_public_api_surface.py \
+            tests/test_end_to_end_agent_flow.py \
+            tests/test_interface_report_up_to_date.py \
+            tests/test_thermo_affinity_boundary.py
+
+      - name: Type check (mypy public surface)
+        run: mypy --follow-imports=skip openatoms/api.py openatoms/ir/__init__.py
+
       - name: Pytest
         run: pytest -q
+
+      - name: Interface report check
+        run: pytest -q tests/test_interface_report_up_to_date.py
+
+      - name: Minimal pip install smoke test
+        run: |
+          python -m venv /tmp/openatoms-install-test
+          /tmp/openatoms-install-test/bin/pip install .
+          /tmp/openatoms-install-test/bin/python -c "import openatoms; from openatoms import build_protocol, compile_protocol; print(openatoms.__name__)"
 
       - name: Examples as tests
         run: pytest -q tests/test_examples_execution.py
@@ -52,9 +74,29 @@ jobs:
       - name: Install package and cantera dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -e ".[dev,sim-cantera]"
+          pip install -e ".[dev,cantera]"
 
       - name: Verify reproducibility with cantera enforced
         env:
           OPENATOMS_CI: "1"
         run: python scripts/verify_reproducibility.py
+
+  all-extras-optional:
+    name: all-extras-optional
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.10"
+
+      - name: Install package with all extras
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[all]"
+
+      - name: Extras smoke import
+        run: python -c "from openatoms.sim.registry import VirtualReactor, RoboticsSimulator, OT2Simulator; print('extras-smoke-ok')"

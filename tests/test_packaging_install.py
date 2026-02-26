@@ -61,13 +61,13 @@ def test_editable_install_imports_in_subprocess(tmp_path) -> None:
 
 
 def test_ir_schema_is_packaged_resource() -> None:
-    schema_resource = resources.files("openatoms.ir").joinpath(get_schema_resource_name())
+    schema_resource = resources.files("openatoms.schemas").joinpath(get_schema_resource_name())
     schema = json.loads(schema_resource.read_text(encoding="utf-8"))
     assert schema["title"] == "OpenAtoms Protocol IR"
 
 
 def test_minimal_known_good_ir_validates() -> None:
-    schema_resource = resources.files("openatoms.ir").joinpath(get_schema_resource_name())
+    schema_resource = resources.files("openatoms.schemas").joinpath(get_schema_resource_name())
     schema = json.loads(schema_resource.read_text(encoding="utf-8"))
     payload = _known_good_payload()
     jsonschema.validate(instance=payload, schema=schema)

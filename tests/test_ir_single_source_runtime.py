@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import importlib.util
 import json
-import warnings
 from importlib import resources
 from pathlib import Path
 
@@ -35,7 +33,7 @@ def _known_good_payload() -> dict[str, object]:
 
 
 def test_ir_schema_packaged_and_loadable() -> None:
-    schema_resource = resources.files("openatoms.ir").joinpath(get_schema_resource_name())
+    schema_resource = resources.files("openatoms.schemas").joinpath(get_schema_resource_name())
     schema = json.loads(schema_resource.read_text(encoding="utf-8"))
     assert schema.get("$id") == "https://openatoms.org/ir/v1.1.0/schema.json"
     assert schema.get("title") == "OpenAtoms Protocol IR"
@@ -43,37 +41,24 @@ def test_ir_schema_packaged_and_loadable() -> None:
         assert top_key in schema
 
 
-def test_legacy_ir_wrapper_warns_and_forwards() -> None:
+def test_no_legacy_ir_module_file_exists() -> None:
     legacy_module_path = Path(__file__).resolve().parents[1] / "openatoms" / "ir.py"
-    assert legacy_module_path.is_file()
-
-    spec = importlib.util.spec_from_file_location("openatoms._legacy_ir_file", legacy_module_path)
-    assert spec is not None
-    assert spec.loader is not None
-    legacy_module = importlib.util.module_from_spec(spec)
-
-    with warnings.catch_warnings(record=True) as caught:
-        warnings.simplefilter("always", DeprecationWarning)
-        spec.loader.exec_module(legacy_module)
-
-    assert any(
-        str(item.message) == "openatoms.ir.py is deprecated; use openatoms.ir (package) instead."
-        for item in caught
-    )
-    payload = _known_good_payload()
-    assert legacy_module.validate_ir(payload) == validate_ir(payload)
+    assert not legacy_module_path.exists(), "openatoms/ir.py must not coexist with openatoms/ir/"
 
 
-def test_no_runtime_schema_duplication() -> None:
+def test_schema_single_source_and_no_runtime_duplication() -> None:
     repo_root = Path(__file__).resolve().parents[1]
-    legacy_schema = repo_root / "openatoms" / "schemas" / "ir-1.1.0.schema.json"
-    runtime_py_files = (repo_root / "openatoms").rglob("*.py")
+    canonical_schema = repo_root / "openatoms" / "schemas" / "ir.schema.json"
+    legacy_ir_schema = repo_root / "openatoms" / "ir" / "schema_v1_1_0.json"
+    versioned_schema = repo_root / "openatoms" / "schemas" / "versioned"
 
-    forbidden_hits: list[Path] = []
-    for source_file in runtime_py_files:
-        source = source_file.read_text(encoding="utf-8")
-        if "openatoms/schemas" in source or "schemas/ir-1.1.0.schema.json" in source:
-            forbidden_hits.append(source_file)
+    assert canonical_schema.is_file()
+    assert not legacy_ir_schema.exists()
+    assert not versioned_schema.exists()
 
-    assert not forbidden_hits, f"runtime code references legacy schema path(s): {forbidden_hits}"
-    assert not legacy_schema.exists()
+    json_resources = sorted(
+        resource.name
+        for resource in resources.files("openatoms.schemas").iterdir()
+        if resource.name.endswith(".json")
+    )
+    assert json_resources == [get_schema_resource_name()]

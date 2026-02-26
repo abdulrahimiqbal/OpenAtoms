@@ -146,7 +146,7 @@ def test_virtual_reactor_missing_cantera_has_install_hint(monkeypatch) -> None:
     monkeypatch.setattr(builtins, "__import__", fake_import)
     with pytest.raises(SimulationDependencyError) as exc_info:
         VirtualReactor._load_cantera()
-    assert 'pip install ".[sim-cantera]"' in exc_info.value.remediation_hint
+    assert 'pip install ".[cantera]"' in exc_info.value.remediation_hint
 
 
 @pytest.mark.skipif(find_spec("cantera") is None, reason="requires cantera")
@@ -186,7 +186,7 @@ def test_robotics_mujoco_mode_dependency_hint() -> None:
             payload_mass=Q_(0.1, "kilogram"),
             mode="mujoco",
         )
-    assert 'pip install ".[sim-mujoco]"' in exc_info.value.remediation_hint
+    assert 'pip install ".[mujoco]"' in exc_info.value.remediation_hint
 
 
 def test_robotics_mujoco_mode_changes_behavior_when_available(monkeypatch) -> None:

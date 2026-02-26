@@ -64,7 +64,7 @@ def test_ir_schema_loads_and_validates() -> None:
 
 def test_ir_schema_is_packaged() -> None:
     schema = json.loads(
-        resources.files("openatoms.ir")
+        resources.files("openatoms.schemas")
         .joinpath(get_schema_resource_name())
         .read_text(encoding="utf-8")
     )
@@ -103,23 +103,23 @@ def test_single_runtime_schema_resource_is_canonical() -> None:
     canonical_version = schema_version()
     canonical_name = get_schema_resource_name()
     assert canonical_version == "1.1.0"
-    assert canonical_name == "schema_v1_1_0.json"
+    assert canonical_name == "ir.schema.json"
 
     json_resources = sorted(
         resource.name
-        for resource in resources.files("openatoms.ir").iterdir()
+        for resource in resources.files("openatoms.schemas").iterdir()
         if resource.name.endswith(".json")
     )
     assert json_resources == [canonical_name]
-    assert not resources.files("openatoms").joinpath("schemas/ir-1.1.0.schema.json").is_file()
+    assert not resources.files("openatoms.ir").joinpath("schema_v1_1_0.json").is_file()
 
 
 def test_ir_single_source_of_truth() -> None:
     module_source = inspect.getsource(ir_module)
     validate_source = inspect.getsource(ir_module.validate_ir)
-    assert "openatoms/schemas" not in module_source
+    assert "openatoms.schemas" in module_source
     assert "load_schema()" in validate_source
-    assert ir_module.get_schema_resource_name() == "schema_v1_1_0.json"
+    assert ir_module.get_schema_resource_name() == "ir.schema.json"
 
 
 def test_legacy_schema_entrypoints_forward_to_canonical() -> None:

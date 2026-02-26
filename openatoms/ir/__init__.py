@@ -1,23 +1,7 @@
-"""OpenAtoms IR schema, validation, and canonicalization helpers.
+"""OpenAtoms IR schema loading, validation, and canonicalization.
 
-Example:
-    >>> payload = {
-    ...   "ir_version": "1.1.0",
-    ...   "protocol_id": "00000000-0000-0000-0000-000000000000",
-    ...   "correlation_id": "00000000-0000-0000-0000-000000000001",
-    ...   "created_at": "2026-01-01T00:00:00Z",
-    ...   "steps": [
-    ...      {"step": 1, "step_id": "s1", "action_type": "Move", "parameters": {}, "depends_on": [], "resources": []}
-    ...   ],
-    ...   "provenance": {
-    ...      "ir_hash": "0000000000000000000000000000000000000000000000000000000000000000",
-    ...      "simulator_versions": {},
-    ...      "noise_seed": None,
-    ...      "validator_version": "1.1.0"
-    ...   }
-    ... }
-    >>> isinstance(canonical_json(payload), str)
-    True
+The canonical schema resource lives at ``openatoms/schemas/ir.schema.json`` and
+is loaded via ``importlib.resources``.
 """
 
 from __future__ import annotations
@@ -27,13 +11,13 @@ import json
 import warnings
 from importlib import resources
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 IR_VERSION = "1.1.0"
 IR_SCHEMA_VERSION = "1.1.0"
 SUPPORTED_IR_VERSIONS = {"1.1.0"}
-SCHEMA_FILENAME = "schema_v1_1_0.json"
-# Backward-compatible alias from legacy module API.
+SCHEMA_PACKAGE = "openatoms.schemas"
+SCHEMA_FILENAME = "ir.schema.json"
 IR_SCHEMA_FILE = SCHEMA_FILENAME
 
 
@@ -66,7 +50,7 @@ def get_schema_resource_name() -> str:
 
 
 def _schema_resource():
-    return resources.files("openatoms.ir").joinpath(get_schema_resource_name())
+    return resources.files(SCHEMA_PACKAGE).joinpath(get_schema_resource_name())
 
 
 def schema_resource_name() -> str:
@@ -82,7 +66,10 @@ def schema_resource_name() -> str:
 def get_schema_path() -> Path:
     """Deprecated filesystem-path helper for schema resource."""
     warnings.warn(
-        "openatoms.ir.get_schema_path() is deprecated; use openatoms.ir.get_schema_resource_name().",
+        (
+            "openatoms.ir.get_schema_path() is deprecated; use "
+            "openatoms.ir.get_schema_resource_name() and importlib.resources."
+        ),
         DeprecationWarning,
         stacklevel=2,
     )
@@ -95,7 +82,7 @@ def schema_path() -> Path:
 
     Example:
         >>> schema_path().name
-        'schema_v1_1_0.json'
+        'ir.schema.json'
     """
     warnings.warn(
         "openatoms.ir.schema_path() is deprecated; use openatoms.ir.get_schema_path().",
@@ -112,7 +99,8 @@ def load_schema() -> dict[str, Any]:
         >>> load_schema()["title"]
         'OpenAtoms Protocol IR'
     """
-    return json.loads(_schema_resource().read_text(encoding="utf-8"))
+    payload = json.loads(_schema_resource().read_text(encoding="utf-8"))
+    return cast(dict[str, Any], payload)
 
 
 def canonical_json(payload: dict[str, Any]) -> str:

@@ -150,6 +150,8 @@ class SimulationDependencyError(PhysicsError):
     """Raised when optional simulation dependencies are unavailable."""
 
     def __init__(self, dependency: str, import_error: str, *, extra: str | None = None):
+        self.dependency = dependency
+        self.extra = extra
         if extra:
             remediation = f'Install optional simulator extras: pip install ".[{extra}]"'
         else:

@@ -124,7 +124,7 @@ class RoboticsSimulator:
                 raise SimulationDependencyError(
                     "mujoco",
                     "Package not installed",
-                    extra="sim-mujoco",
+                    extra="mujoco",
                 )
             result = self._analytical_trajectory(waypoints, payload_mass)
             result.mode = "mujoco+analytical"

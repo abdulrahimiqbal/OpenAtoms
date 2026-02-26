@@ -36,6 +36,21 @@ dev = [
   "pytest-cov>=7,<8",
   "twine>=5,<6",
 ]
+cantera = [
+  "cantera>=3,<4",
+]
+opentrons = [
+  "opentrons>=7,<9",
+]
+mujoco = [
+  "mujoco>=3,<4",
+]
+all = [
+  "cantera>=3,<4",
+  "opentrons>=7,<9",
+  "mujoco>=3,<4",
+]
+# Backward-compatible legacy aliases.
 sim-cantera = [
   "cantera>=3,<4",
 ]
@@ -44,9 +59,9 @@ sim-mujoco = [
 ]
 sim-all = [
   "cantera>=3,<4",
+  "opentrons>=7,<9",
   "mujoco>=3,<4",
 ]
-# Backward-compatible legacy alias.
 science = [
   "cantera>=3,<4",
 ]
@@ -63,7 +78,7 @@ markers = [
 ]
 
 [tool.setuptools.package-data]
-openatoms = ["ir/*.json"]
+openatoms = ["schemas/*.json"]
 
 [tool.setuptools.packages.find]
 include = ["openatoms*", "eval*"]

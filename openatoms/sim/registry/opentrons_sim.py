@@ -256,7 +256,7 @@ class OpentronsSimValidator:
                 "run_log": run_log,
             }
         except ImportError:
-            error = SimulationDependencyError("opentrons", "Package not installed")
+            error = SimulationDependencyError("opentrons", "Package not installed", extra="opentrons")
             observation = StateObservation(success=False, errors=[error], metadata={"path": protocol_path})
             return {"state_observation_json": observation.to_json(), "error": error, "run_log": None}
         except Exception as exc:  # pragma: no cover - external simulator branch

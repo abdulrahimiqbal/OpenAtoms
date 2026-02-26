@@ -26,7 +26,7 @@ def _run(env_overrides: dict[str, str]) -> subprocess.CompletedProcess[str]:
 def test_verify_reproducibility_ci_fails_without_cantera() -> None:
     result = _run({"OPENATOMS_CI": "1", "OPENATOMS_FORCE_MISSING_CANTERA": "1"})
     assert result.returncode != 0
-    assert "Install with: pip install \".[sim-cantera]\"." in result.stdout
+    assert "Install with: pip install \".[cantera]\"." in result.stdout
     assert "OPENATOMS_CI=1 requires deterministic thermo validation." in result.stdout
 
 

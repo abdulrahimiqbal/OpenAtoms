@@ -4,13 +4,20 @@ Example:
     >>> from openatoms.sim.registry.kinetics_sim import VirtualReactor
     >>> from openatoms.units import Q_
     >>> vr = VirtualReactor()
-    >>> ok, delta_g = vr.check_gibbs_feasibility({"H2": 1, "O2": 0.5}, {"H2O": 1}, Q_(300, "kelvin"), Q_(1, "atm"))
+    >>> ok, delta_g = vr.estimate_reaction_affinity_heuristic(
+    ...     {"H2": 1, "O2": 0.5},
+    ...     {"H2O": 1},
+    ...     {"H2": 0.6, "O2": 0.3, "H2O": 0.1},
+    ...     Q_(300, "kelvin"),
+    ...     Q_(1, "atm"),
+    ... )
     >>> isinstance(ok, bool)
     True
 """
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass
 from typing import Literal, Optional
 
@@ -34,6 +41,7 @@ class VirtualReactor:
     - Uses Cantera equilibrium endpoints for physically grounded trends.
     - Uses deterministic interpolation between endpoints for robust CI/runtime behavior.
     - Not a full stiff ODE reactor-network solver for publication-grade kinetics.
+    - Affinity/ΔG checks are deterministic heuristic gates, not certification claims.
     """
 
     def __init__(self, mechanism: str = "h2o2.yaml") -> None:
@@ -44,7 +52,7 @@ class VirtualReactor:
         try:
             import cantera as ct  # type: ignore
         except ImportError as exc:  # pragma: no cover - optional dependency path
-            raise SimulationDependencyError("cantera", str(exc), extra="sim-cantera") from exc
+            raise SimulationDependencyError("cantera", str(exc), extra="cantera") from exc
         return ct
 
     @staticmethod
@@ -206,33 +214,81 @@ class VirtualReactor:
 
         return None
 
-    def check_gibbs_feasibility(
+    def estimate_reaction_affinity_heuristic(
         self,
         reactants: dict[str, float],
         products: dict[str, float],
+        composition: dict[str, float],
         T: Quantity,
         P: Quantity,
     ) -> tuple[bool, Quantity]:
-        """Compute reaction Gibbs free-energy change using Cantera chemical potentials."""
+        """Estimate reaction affinity (ΔG) for one explicit thermodynamic state.
+
+        This is a heuristic pre-screening gate:
+        - evaluates chemical potentials at `(T, P, composition)`;
+        - computes ΔG from provided reactant/product stoichiometry;
+        - does not claim kinetic accessibility or certification-grade feasibility.
+        """
         ct = self._load_cantera()
         gas = ct.Solution(self.mechanism)
-        gas.TP = (
-            require_temperature(T).to("kelvin").magnitude,
-            require_quantity(P).to("pascal").magnitude,
-        )
+        known_species = set(gas.species_names)
 
-        species_names = set(gas.species_names)
-        unknown = [name for name in list(reactants.keys()) + list(products.keys()) if name not in species_names]
+        resolved_composition = {
+            species: float(value)
+            for species, value in composition.items()
+            if float(value) > 0.0
+        }
+        if not resolved_composition:
+            raise ReactionFeasibilityError(
+                description="Composition must include at least one positive species fraction.",
+                actual_value=composition,
+                limit_value="non-empty positive composition mapping",
+                remediation_hint=(
+                    "Provide an explicit composition mapping for the state where affinity "
+                    "is evaluated."
+                ),
+            )
+
+        unknown = [
+            name
+            for name in list(reactants.keys())
+            + list(products.keys())
+            + list(resolved_composition.keys())
+            if name not in known_species
+        ]
         if unknown:
             raise ReactionFeasibilityError(
-                description="Species not found in Cantera mechanism for Gibbs feasibility check.",
+                description="Species not found in Cantera mechanism for affinity heuristic.",
                 actual_value=unknown,
-                limit_value=sorted(species_names)[:10],
+                limit_value=sorted(known_species)[:10],
                 remediation_hint=(
                     "Use species available in the selected mechanism file or switch to a "
                     "mechanism that contains the requested species."
                 ),
             )
+
+        try:
+            gas.TPX = (
+                require_temperature(T).to("kelvin").magnitude,
+                require_quantity(P).to("pascal").magnitude,
+                self._to_composition_string(resolved_composition),
+            )
+        except Exception as exc:
+            raise ReactionFeasibilityError(
+                description="Failed to construct requested thermodynamic state for affinity heuristic.",
+                actual_value={
+                    "temperature": str(T),
+                    "pressure": str(P),
+                    "composition": resolved_composition,
+                },
+                limit_value="valid (T, P, composition) state for selected mechanism",
+                remediation_hint=(
+                    "Adjust species set and state values to a mechanism-supported state "
+                    "before evaluating affinity."
+                ),
+            ) from exc
+
+        species_names = set(gas.species_names)
 
         mu = {
             species: float(gas.chemical_potentials[gas.species_index(species)])
@@ -243,6 +299,46 @@ class VirtualReactor:
         )
         delta_g = Q_(delta_g_j_per_mol, "joule / mole")
         return (delta_g.to("kilojoule/mole").magnitude < 0.0, delta_g.to("kilojoule/mole"))
+
+    def check_gibbs_feasibility(
+        self,
+        reactants: dict[str, float],
+        products: dict[str, float],
+        T: Quantity,
+        P: Quantity,
+    ) -> tuple[bool, Quantity]:
+        """Deprecated compatibility wrapper around the affinity heuristic gate."""
+        warnings.warn(
+            (
+                "VirtualReactor.check_gibbs_feasibility() is deprecated. "
+                "Use estimate_reaction_affinity_heuristic() with explicit composition."
+            ),
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
+        inferred_state = dict(reactants)
+        for species, value in products.items():
+            inferred_state[species] = inferred_state.get(species, 0.0) + max(float(value), 0.0)
+        total = sum(max(value, 0.0) for value in inferred_state.values())
+        if total <= 0.0:
+            raise ReactionFeasibilityError(
+                description="Cannot infer composition from empty stoichiometric inputs.",
+                actual_value={"reactants": reactants, "products": products},
+                limit_value="at least one positive stoichiometric coefficient",
+                remediation_hint="Provide positive stoichiometric coefficients for the reaction.",
+            )
+        normalized_state = {
+            species: max(value, 0.0) / total
+            for species, value in inferred_state.items()
+        }
+        return self.estimate_reaction_affinity_heuristic(
+            reactants=reactants,
+            products=products,
+            composition=normalized_state,
+            T=T,
+            P=P,
+        )
 
     def simulate_hydrogen_oxygen_combustion(
         self,
