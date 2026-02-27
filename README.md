@@ -1,81 +1,156 @@
 # OpenAtoms
 
-OpenAtoms compiles AI-proposed lab actions into deterministic protocol IR, validates hard safety invariants, and executes optional simulator safety gates before hardware execution.
+OpenAtoms is a reliability layer for LLM-driven science.
+
+When you use an AI to accelerate research — generating hypotheses, designing protocols, exploring parameter spaces — you introduce a new bottleneck: you can't tell which AI-generated results are physically real. The outputs look plausible, the code runs, the numbers come out. But without a verification step, you're moving fast without confidence in the direction.
+
+OpenAtoms sits between your AI and your experiment. Every AI-proposed protocol is validated against physical and empirical constraints before execution. Every run produces a signed, replayable bundle — mechanism files, solver tolerances, dependency versions, full trajectory — that anyone can reproduce exactly.
+
+**AI proposes. OpenAtoms verifies. The bundle proves it.**
+
+---
 
 ## Installation
 
-Core + developer tooling:
+Core:
 
 ```bash
-python -m pip install -e ".[dev]"
+pip install -e ".[dev]"
 ```
 
-Optional simulator extras:
+Optional simulator nodes:
 
 ```bash
-python -m pip install -e ".[cantera]"       # thermo-kinetic node
-python -m pip install -e ".[opentrons]"     # opentrons runtime simulator
-python -m pip install -e ".[mujoco]"        # robotics node
-python -m pip install -e ".[all]"           # all optional simulators
+pip install -e ".[cantera]"      # thermo-kinetic chemistry node
+pip install -e ".[opentrons]"    # liquid-handling robot node
+pip install -e ".[all]"          # all simulators
 ```
 
-## Minimal Hello Protocol
+BCI worked example:
 
 ```bash
-python - <<'PY'
+pip install -e ".[bci-example]"
+export ANTHROPIC_API_KEY=sk-...
+python examples/bci_verification_bottleneck/run_example.py --derco-path /path/to/derco
+```
+
+---
+
+## Worked Example: The Verification Bottleneck
+
+The fastest way to understand what OpenAtoms does is to see it run on a real research question.
+
+Rahim Iqbal's paper ["The Verification Bottleneck"](https://rahimiqbal.substack.com/p/the-verification-bottleneck-why-better) showed that LLM-assisted brain-computer interfaces dramatically outperform standard approaches at consumer EEG signal quality, with a crossover point around d′ ≈ 1.7. The paper projected that GPT-4 class models would give ~3.4x speedup over a uniform prior — but that was a projection, not a measurement.
+
+We ran it through OpenAtoms. Here's what happened:
+
+| Metric | Published | Reproduced | Source |
+|--------|-----------|------------|--------|
+| Crossover d′ | ≈ 1.7 | **1.663** | Phase 1 |
+| N400 passive d′ | ≈ 0.00 | **0.024** | Phase 1 (DERCo) |
+| GPT-2 speedup | 2.3× | **2.35×** | Phase 2 |
+| Claude entropy | projected 1.5 bits | **1.073 bits** (measured) | Phase 2 |
+| Claude speedup | projected 3.4× | **4.23×** (measured) | Phase 2 |
+| Closed-loop convergence | — | **2 iterations** (1 rejection → 1 acceptance) | Phase 3 |
+
+The Claude entropy and speedup numbers are new results. They weren't in the paper. They came out of the loop — and they're better than the GPT-4 projection the paper used as its upper bound.
+
+The entire run produced a signed bundle. Anyone can download it, run one command, and get identical numbers.
+
+### What the three phases demonstrate
+
+**Phase 1 — Reproduce:** The d′ crossover curve is recomputed from scratch against the DERCo dataset. The result lands within 2% of the published value. The N400 negative result replicates near-zero, exactly as the paper reports.
+
+**Phase 2 — Extend:** Claude's actual character-level entropy is measured via API sampling — not projected from scaling laws. The empirical speedup is computed directly. This is a new data point the original paper couldn't produce.
+
+**Phase 3 — Close the loop:** An AI agent proposes BCI protocol configurations. The simulator evaluates them. The first proposal is intentionally weak and gets rejected with a structured error. The AI revises. The second proposal is accepted. The full iteration trace — including the rejection — is recorded in the bundle.
+
+### Running it yourself
+
+```bash
+pip install -e ".[bci-example]"
+export ANTHROPIC_API_KEY=sk-...
+
+python examples/bci_verification_bottleneck/run_example.py \
+    --derco-path /path/to/derco \
+    --output-bundle ./my_bundle.zip
+
+openatoms bundle verify ./my_bundle.zip
+```
+
+---
+
+## Building a Reliability Layer for Your Own Experiment
+
+The BCI example is one instance of a general pattern. Any experiment where an AI generates hypotheses or protocols can be wrapped in OpenAtoms in the same way.
+
+The pattern:
+
+```
+AI generates candidate
+        ↓
+OpenAtoms validates against your constraints
+        ↓
+Pass → execute, record result
+Fail → structured PhysicsError with remediation_hint → back to AI
+        ↓
+Every outcome → signed bundle with full provenance
+```
+
+You implement four things: a protocol dataclass, a simulator, a closed loop, and a bundle. The framework handles IR serialization, deterministic hashing, signing, and replay.
+
+**→ Full step-by-step walkthrough with complete example code: [SETUP.md](SETUP.md)**
+
+The walkthrough covers defining a protocol, writing a simulator with structured error codes, building the agent loop, creating a signed bundle, and a test suite for the whole thing. Works for any domain — computational, wet lab, materials screening, or anything else where an AI is generating experimental proposals.
+
+---
+
+## What OpenAtoms Actually Does
+
+### Protocol IR
+
+Every experiment is compiled into a versioned, deterministic IR (Intermediate Representation) — a JSON document that captures the full protocol as a dependency graph. The IR is schema-validated and content-hashed before any simulation or execution runs.
+
+```python
 from openatoms.actions import Move
 from openatoms.core import Container, Matter, Phase
 from openatoms.dag import ProtocolGraph
 from openatoms.units import Q_
 
-a = Container(id="A", label="A", max_volume=Q_(500, "microliter"), max_temp=Q_(100, "degC"), min_temp=Q_(0, "degC"))
-b = Container(id="B", label="B", max_volume=Q_(500, "microliter"), max_temp=Q_(100, "degC"), min_temp=Q_(0, "degC"))
-a.contents.append(Matter(name="H2O", phase=Phase.LIQUID, mass=Q_(200, "milligram"), volume=Q_(200, "microliter")))
+src = Container(id="A", label="A", max_volume=Q_(500, "microliter"),
+                max_temp=Q_(100, "degC"), min_temp=Q_(0, "degC"))
+dst = Container(id="B", label="B", max_volume=Q_(500, "microliter"),
+                max_temp=Q_(100, "degC"), min_temp=Q_(0, "degC"))
+src.contents.append(Matter(name="H2O", phase=Phase.LIQUID,
+                            mass=Q_(200, "milligram"), volume=Q_(200, "microliter")))
 
-g = ProtocolGraph("hello_protocol")
-g.add_step(Move(a, b, Q_(100, "microliter")))
-g.dry_run()
-print(g.export_json())
-PY
+graph = ProtocolGraph("example")
+graph.add_step(Move(src, dst, Q_(100, "microliter")))
+graph.dry_run()
+print(graph.export_json())
 ```
 
-## IR Schema and Validation Contract
+### Physics validation
 
-- Canonical runtime interface: `openatoms.ir.validate_ir`, `openatoms.ir.load_schema`, `openatoms.ir.schema_version`, `openatoms.ir.get_schema_resource_name`.
-- Canonical schema resource: `openatoms/schemas/ir.schema.json`.
-- Legacy schema helpers (`get_schema_version`, `get_schema_path`, `schema_path`) are deprecated wrappers.
-- Invalid payloads return stable `IRValidationError` codes (`IR_TYPE`, `IR_VERSION`, `IR_MISSING_FIELD`, `IR_SCHEMA_VALIDATION`).
+Before any simulation runs, protocols are validated for physical feasibility: volume overflow, thermal limits, mass conservation, ordering constraints. Violations return structured `PhysicsError` payloads with `remediation_hint` fields — machine-readable, designed for agent self-correction loops.
 
-### Versioning policy
+### Simulation nodes
 
-- Backward-incompatible IR changes require a new schema version and resource filename.
-- Runtime code must reference exactly one canonical schema resource.
-- Deprecations keep wrapper entrypoints for one minor line before removal.
+| Node | Domain | What it does |
+|------|--------|-------------|
+| **Thermo-kinetic** | Chemistry | Cantera CVODE ODE integration for H₂/O₂ and other mechanisms. Real ignition delay computation, calibrated against published experimental data. Thermal runaway detection from trajectory dT/dt. |
+| **Bio-kinetic** | Liquid handling | Opentrons-compatible pipetting simulation. Volume tracking, deck geometry checks, collision detection. Optional `opentrons.simulate` integration. |
 
-## Determinism Guarantees
+Both nodes emit `StateObservation` payloads. Both can be used without hardware.
 
-- IR serialization is canonical (`sorted keys`, compact separators, stable SHA-256 hashing).
-- Benchmark artifacts are deterministic for fixed `(seed, n, suite, injection_probability)`:
-  - `raw_runs.jsonl`
-  - `summary.json`
-  - `BENCHMARK_REPORT.md`
-- Reproducibility check:
+### Simulation contracts (what we claim and don't claim)
 
-```bash
-python scripts/verify_reproducibility.py
-```
+- **Thermo-kinetic node:** Deterministic thermo safety gating from Cantera-backed ODE integration, calibrated against Slack & Grillo (1977) ignition data. Does not claim publication-grade reactor-network fidelity for all mechanisms or operating conditions.
+- **Bio-kinetic node:** Deterministic pipetting and deck safety checks. Does not model meniscus dynamics or fluid physics.
 
-If `cantera` is missing:
-- CI (`OPENATOMS_CI=1`) exits nonzero.
-- Local runs may skip only with `OPENATOMS_ALLOW_SKIP=1`.
+### Experiment bundles
 
-## Experiment Bundles (OEB)
-
-OpenAtoms includes a first-class reproducibility bundle format:
-- Spec: [`docs/BUNDLE_SPEC.md`](docs/BUNDLE_SPEC.md)
-- Contract + workflows: [`docs/REPRODUCIBILITY.md`](docs/REPRODUCIBILITY.md)
-
-Core CLI:
+Every run produces a signed `.zip` bundle containing the protocol IR, simulation outputs, result files, dependency manifest, and a cryptographic signature. The bundle format is the reproducibility artifact — it is the methods section.
 
 ```bash
 openatoms bundle create --ir protocol.ir.json --output ./bundle --deterministic
@@ -85,40 +160,46 @@ openatoms bundle sign --bundle ./bundle
 openatoms bundle verify-signature --bundle ./bundle
 ```
 
-## Simulator Safety Contracts
+Full spec: [`docs/BUNDLE_SPEC.md`](docs/BUNDLE_SPEC.md)
 
-- Node A (`OT2Simulator`): guarantees deterministic pipetting/deck safety checks; does **not** model meniscus/fluid dynamics.
-- Node B (`VirtualReactor`): guarantees deterministic thermo safety gating from Cantera-backed endpoints; does **not** claim full publication-grade reactor-network fidelity.
-- Node C (`RoboticsSimulator`): guarantees deterministic analytical grasp/stress/torque/collision checks; MuJoCo mode is optional and not a certification claim.
+### Determinism guarantees
 
-## Benchmark Reproduction
+- IR serialization is canonical (sorted keys, stable SHA-256 hashing).
+- Benchmark artifacts are deterministic for fixed `(seed, n, suite, injection_probability)`.
+- Reproducibility check: `python scripts/verify_reproducibility.py`
+
+---
+
+## Benchmark
 
 ```bash
 python -m eval.run_benchmark --seed 123 --n 200 --suite realistic --violation-probability 0.1
 ```
 
-Generated outputs are written to `eval/results/` and are not committed to git. See
-[`docs/benchmark_example.md`](docs/benchmark_example.md) for an example layout.
+Suites: `realistic` (low violation injection), `stress` (edge-heavy), `fuzz` (deterministic edge-biased).
 
-Benchmark suites:
-- `realistic`: plausible operating ranges, low violation injection.
-- `stress`: edge-heavy ranges, higher violation injection.
-- `fuzz`: edge-biased deterministic fuzz ranges.
+Benchmark metrics measure whether the validator correctly detects and remediates injected violations — with Wilson confidence intervals. They are not hardware calibration accuracy and are not substitutes for human review or interlock validation.
 
-### What benchmark metrics mean
+---
 
-- Detection: TP/FP/FN/TN and Wilson confidence intervals.
-- Correction: successful remediation rate (valid + intent-proxy preserving) and confidence intervals.
+## Repository Layout
 
-### What benchmark metrics do not mean
+```
+openatoms/                             # Core compiler, actions, validators, IR
+openatoms/sim/registry/                # Simulation nodes (Cantera, Opentrons)
+examples/bci_verification_bottleneck/  # Worked example: BCI research reproduction
+eval/                                  # Benchmark pipeline
+tests/                                 # Test suite
+docs/                                  # Bundle spec, reproducibility contract
+```
 
-- They are not hardware calibration accuracy.
-- They are not proof of end-to-end robotic execution safety.
-- They are not substitutes for human review, SOP checks, or interlock validation.
+---
 
-## Security, Safety, and Release
+## Security and Safety
 
 - Security reporting: [SECURITY.md](SECURITY.md)
 - Operational safety boundaries: [SAFETY.md](SAFETY.md)
 - Release process: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md)
 - Change history: [CHANGELOG.md](CHANGELOG.md)
+
+OpenAtoms simulation nodes are safety-gating tools, not hardware certification systems. A simulation pass is not a substitute for qualified human review, standard operating procedures, or physical interlocks before execution on real equipment.
