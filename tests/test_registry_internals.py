@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from types import SimpleNamespace
-
 import pytest
 
 from openatoms.errors import OrderingConstraintError, ReactionFeasibilityError
@@ -25,10 +23,18 @@ class _FakeThermo:
     def species_index(self, species: str) -> int:
         return self.species_names.index(species)
 
+    def __getitem__(self, species: str):
+        return type("SpeciesView", (), {"X": [self._x.get(species, 0.0)]})()
+
 
 class _FakeSolution(_FakeThermo):
     def __init__(self, _mechanism: str):
-        super().__init__(temperature=300.0, pressure=101325.0, composition={"H2": 0.5, "O2": 0.25, "N2": 0.25, "N": 0.0})
+        super().__init__(
+            temperature=300.0,
+            pressure=101325.0,
+            composition={"H2": 0.5, "O2": 0.25, "N2": 0.25, "N": 0.0},
+        )
+        self.source = "fake.yaml"
 
     @property
     def TPX(self):
@@ -71,14 +77,34 @@ class _FakeSolution(_FakeThermo):
 
 class _FakeCantera:
     Solution = _FakeSolution
+    __version__ = "fake-cantera-1.0"
 
     @staticmethod
     def IdealGasReactor(gas, energy="on"):
-        return SimpleNamespace(thermo=gas)
+        return type("FakeReactor", (), {"thermo": gas})()
 
     @staticmethod
     def IdealGasConstPressureReactor(gas, energy="on"):
-        return SimpleNamespace(thermo=gas)
+        return type("FakeReactor", (), {"thermo": gas})()
+
+    @staticmethod
+    def get_data_directories():
+        return []
+
+    class ReactorNet:
+        def __init__(self, reactors):
+            self.reactor = reactors[0]
+            self.time = 0.0
+            self.rtol = 1.0e-9
+            self.atol = 1.0e-15
+            self.max_time_step = 1.0e-3
+
+        def step(self):
+            dt = max(self.max_time_step, 1.0e-6)
+            self.time += dt
+            self.reactor.thermo.T += 5000.0 * dt
+            self.reactor.thermo.P += 1000.0 * dt
+            return self.time
 
 
 def test_virtual_reactor_simulate_and_gibbs(monkeypatch) -> None:
@@ -126,6 +152,12 @@ def test_thermal_runaway_detection() -> None:
         pressures_pa=[101325.0] * 5,
         species_mole_fractions={"H2": [0.5] * 5},
         heat_release_rate_w_m3=[0.0] * 5,
+        solver_rtol=1.0e-9,
+        solver_atol=1.0e-15,
+        mechanism_file="h2o2.yaml",
+        mechanism_hash="0" * 64,
+        cantera_version="3.0.0",
+        integrator="CVODE",
     )
     error = reactor.check_thermal_runaway(trajectory)
     assert error is not None

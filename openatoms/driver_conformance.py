@@ -28,7 +28,7 @@ class _ConformanceDag:
 
     def export_json(self) -> str:
         return (
-            '{"protocol_name":"Conformance","ir_version":"1.1.0","schema_version":"1.1.0",'
+            '{"protocol_name":"Conformance","ir_version":"1.2.0","schema_version":"1.2.0",'
             '"steps":[{"step":1,"step_id":"s1","action_type":"Move","parameters":{"amount_ml":1},'
             '"depends_on":[],"resources":[]}],"references":{"containers":[],"materials":[]}}'
         )
@@ -85,4 +85,3 @@ def run_conformance(adapter_cls: Type[BaseAdapter]) -> List[ConformanceResult]:
     )
 
     return results
-

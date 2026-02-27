@@ -15,7 +15,7 @@ python -m eval.run_benchmark --seed 123 --n 200 --suite realistic --violation-pr
 - Seed: 123
 - Suite: realistic
 - Injection probability: 0.1
-- Schema version: 1.1.0
+- Schema version: 1.2.0
 - Schema resource: ir.schema.json
 - Timestamp (UTC): 2026-02-26T12:00:00+00:00
 - Repo commit: 0123456789abcdef0123456789abcdef01234567

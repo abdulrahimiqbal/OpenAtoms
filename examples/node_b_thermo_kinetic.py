@@ -88,7 +88,7 @@ def demo_3_pressure_safety(reactor: VirtualReactor) -> None:
         closed = reactor.simulate_reaction(
             reactants={"CH4": 1.0, "O2": 2.0, "N2": 7.52},
             mechanism=reactor.mechanism,
-            T_initial=Q_(300, "kelvin"),
+            T_initial=Q_(1200, "kelvin"),
             P_initial=Q_(1, "atm"),
             duration=Q_(0.03, "second"),
             reactor_type="IdealGasReactor",
@@ -98,7 +98,7 @@ def demo_3_pressure_safety(reactor: VirtualReactor) -> None:
         closed = reactor.simulate_reaction(
             reactants={"H2": 2.0, "O2": 1.0, "N2": 3.76},
             mechanism=reactor.mechanism,
-            T_initial=Q_(300, "kelvin"),
+            T_initial=Q_(1200, "kelvin"),
             P_initial=Q_(1, "atm"),
             duration=Q_(0.03, "second"),
             reactor_type="IdealGasReactor",
@@ -127,7 +127,7 @@ def demo_3_pressure_safety(reactor: VirtualReactor) -> None:
         vented = reactor.simulate_reaction(
             reactants={"CH4": 1.0, "O2": 2.0, "N2": 7.52},
             mechanism=reactor.mechanism,
-            T_initial=Q_(300, "kelvin"),
+            T_initial=Q_(1200, "kelvin"),
             P_initial=Q_(1, "atm"),
             duration=Q_(0.03, "second"),
             reactor_type="IdealGasConstPressureReactor",
@@ -136,7 +136,7 @@ def demo_3_pressure_safety(reactor: VirtualReactor) -> None:
         vented = reactor.simulate_reaction(
             reactants={"H2": 2.0, "O2": 1.0, "N2": 3.76},
             mechanism=reactor.mechanism,
-            T_initial=Q_(300, "kelvin"),
+            T_initial=Q_(1200, "kelvin"),
             P_initial=Q_(1, "atm"),
             duration=Q_(0.03, "second"),
             reactor_type="IdealGasConstPressureReactor",

@@ -9,7 +9,7 @@ from openatoms.ir import get_schema_resource_name, validate_ir
 
 def _known_good_payload() -> dict[str, object]:
     return {
-        "ir_version": "1.1.0",
+        "ir_version": "1.2.0",
         "protocol_id": "00000000-0000-0000-0000-000000000000",
         "correlation_id": "00000000-0000-0000-0000-000000000001",
         "created_at": "2026-01-01T00:00:00+00:00",
@@ -27,7 +27,7 @@ def _known_good_payload() -> dict[str, object]:
             "ir_hash": "0" * 64,
             "simulator_versions": {},
             "noise_seed": None,
-            "validator_version": "1.1.0",
+            "validator_version": "1.2.0",
         },
     }
 
@@ -35,7 +35,7 @@ def _known_good_payload() -> dict[str, object]:
 def test_ir_schema_packaged_and_loadable() -> None:
     schema_resource = resources.files("openatoms.schemas").joinpath(get_schema_resource_name())
     schema = json.loads(schema_resource.read_text(encoding="utf-8"))
-    assert schema.get("$id") == "https://openatoms.org/ir/v1.1.0/schema.json"
+    assert schema.get("$id") == "https://openatoms.org/ir/v1.2.0/schema.json"
     assert schema.get("title") == "OpenAtoms Protocol IR"
     for top_key in ("type", "required", "properties"):
         assert top_key in schema

@@ -75,7 +75,7 @@ class ProtocolRunner:
         if self.simulation_harness is not None:
             dag.dry_run()
             simulation_gate = self.simulation_harness.run(dag=dag, run_context=run_context)
-            if simulation_gate["status"] != "ok":
+            if simulation_gate["status"] == "failed":
                 raise PhysicsError(
                     error_code="SIM_002",
                     constraint_type="ordering",

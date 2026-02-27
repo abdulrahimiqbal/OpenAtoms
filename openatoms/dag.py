@@ -264,7 +264,7 @@ class ProtocolGraph:
                 "ir_hash": "0" * 64,
                 "simulator_versions": {},
                 "noise_seed": None,
-                "validator_version": "1.1.0",
+                "validator_version": "1.2.0",
             },
         }
         payload = attach_ir_hash(payload)

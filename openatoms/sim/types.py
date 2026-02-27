@@ -61,6 +61,12 @@ class ReactionTrajectory:
     pressures_pa: list[float]
     species_mole_fractions: dict[str, list[float]]
     heat_release_rate_w_m3: list[float]
+    solver_rtol: float
+    solver_atol: float
+    mechanism_file: str
+    mechanism_hash: str
+    cantera_version: str
+    integrator: str
 
 
 @dataclass

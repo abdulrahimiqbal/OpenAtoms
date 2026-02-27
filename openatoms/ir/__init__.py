@@ -13,9 +13,9 @@ from importlib import resources
 from pathlib import Path
 from typing import Any, cast
 
-IR_VERSION = "1.1.0"
-IR_SCHEMA_VERSION = "1.1.0"
-SUPPORTED_IR_VERSIONS = {"1.1.0"}
+IR_VERSION = "1.2.0"
+IR_SCHEMA_VERSION = "1.2.0"
+SUPPORTED_IR_VERSIONS = {"1.2.0", "1.1.0"}
 SCHEMA_PACKAGE = "openatoms.schemas"
 SCHEMA_FILENAME = "ir.schema.json"
 IR_SCHEMA_FILE = SCHEMA_FILENAME
@@ -123,6 +123,41 @@ def ir_hash(payload: dict[str, Any]) -> str:
     return hashlib.sha256(canonical_json(payload).encode("utf-8")).hexdigest()
 
 
+def _upgrade_1_1_0_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    upgraded = dict(payload)
+    upgraded["ir_version"] = IR_VERSION
+
+    if "schema_version" in upgraded:
+        upgraded["schema_version"] = IR_SCHEMA_VERSION
+
+    provenance = dict(upgraded.get("provenance", {}))
+    if provenance.get("validator_version") == "1.1.0":
+        provenance["validator_version"] = IR_VERSION
+    upgraded["provenance"] = provenance
+
+    if "ir_hash" in provenance:
+        staged = dict(upgraded)
+        staged_provenance = dict(provenance)
+        staged_provenance["ir_hash"] = ""
+        staged["provenance"] = staged_provenance
+        provenance["ir_hash"] = ir_hash(staged)
+        upgraded["provenance"] = provenance
+
+    return upgraded
+
+
+def _normalize_supported_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    version = payload.get("ir_version")
+    if version == IR_VERSION:
+        return payload
+    if version == "1.1.0":
+        return _upgrade_1_1_0_payload(payload)
+    raise IRValidationError(
+        "IR_VERSION",
+        f"IR payload must declare a supported ir_version ({', '.join(sorted(SUPPORTED_IR_VERSIONS))}).",
+    )
+
+
 def validate_ir(payload: dict[str, Any]) -> dict[str, Any]:
     """Validate IR payload against schema.
 
@@ -131,7 +166,7 @@ def validate_ir(payload: dict[str, Any]) -> dict[str, Any]:
 
     Example:
         >>> minimal = {
-        ...   "ir_version": "1.1.0",
+        ...   "ir_version": "1.2.0",
         ...   "protocol_id": "00000000-0000-0000-0000-000000000000",
         ...   "correlation_id": "00000000-0000-0000-0000-000000000001",
         ...   "created_at": "2026-01-01T00:00:00Z",
@@ -140,19 +175,18 @@ def validate_ir(payload: dict[str, Any]) -> dict[str, Any]:
         ...      "ir_hash": "0000000000000000000000000000000000000000000000000000000000000000",
         ...      "simulator_versions": {},
         ...      "noise_seed": None,
-        ...      "validator_version": "1.1.0"
+        ...      "validator_version": "1.2.0"
         ...   }
         ... }
         >>> validate_ir(minimal)
     """
     if not isinstance(payload, dict):
         raise IRValidationError("IR_TYPE", "IR payload must be a JSON object.")
-    if payload.get("ir_version") != IR_VERSION:
-        raise IRValidationError("IR_VERSION", f"IR payload must declare ir_version={IR_VERSION}.")
+    normalized = _normalize_supported_payload(dict(payload))
 
     required = ["protocol_id", "correlation_id", "created_at", "steps", "provenance"]
     for key in required:
-        if key not in payload:
+        if key not in normalized:
             raise IRValidationError("IR_MISSING_FIELD", f"IR payload missing required field '{key}'.")
 
     try:
@@ -164,7 +198,7 @@ def validate_ir(payload: dict[str, Any]) -> dict[str, Any]:
         ) from exc
 
     validator = jsonschema.Draft7Validator(load_schema())
-    errors = sorted(validator.iter_errors(payload), key=lambda item: list(item.path))
+    errors = sorted(validator.iter_errors(normalized), key=lambda item: list(item.path))
     if errors:
         first = errors[0]
         location = ".".join(str(part) for part in first.path) or "<root>"
@@ -172,7 +206,7 @@ def validate_ir(payload: dict[str, Any]) -> dict[str, Any]:
             "IR_SCHEMA_VALIDATION",
             f"IR schema validation failed at {location}: {first.message}",
         )
-    return payload
+    return normalized
 
 
 def legacy_validate_ir(payload: dict[str, Any]) -> dict[str, Any]:
@@ -201,13 +235,12 @@ def load_ir_payload(raw: str) -> dict[str, Any]:
     Example:
         >>> payload = load_ir_payload('{\"ir_version\":\"1.1.0\",\"protocol_id\":\"00000000-0000-0000-0000-000000000000\",\"correlation_id\":\"00000000-0000-0000-0000-000000000001\",\"created_at\":\"2026-01-01T00:00:00Z\",\"steps\":[{\"step\":1,\"step_id\":\"s1\",\"action_type\":\"Move\",\"parameters\":{},\"depends_on\":[],\"resources\":[]}],\"provenance\":{\"ir_hash\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"simulator_versions\":{},\"noise_seed\":null,\"validator_version\":\"1.1.0\"}}')
         >>> payload["ir_version"]
-        '1.1.0'
+        '1.2.0'
     """
     payload = json.loads(raw)
     if not isinstance(payload, dict):
         raise IRValidationError("IR_TYPE", "IR payload must decode to an object.")
-    validate_ir(payload)
-    return payload
+    return validate_ir(payload)
 
 
 __all__ = [

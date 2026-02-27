@@ -62,7 +62,7 @@ jobs:
         run: |
           python -m venv /tmp/openatoms-wheel-test
           /tmp/openatoms-wheel-test/bin/pip install dist/*.whl
-          /tmp/openatoms-wheel-test/bin/python -c "from openatoms.ir import load_schema, validate_ir; payload={'ir_version':'1.1.0','protocol_id':'00000000-0000-0000-0000-000000000000','correlation_id':'00000000-0000-0000-0000-000000000001','created_at':'2026-01-01T00:00:00+00:00','steps':[{'step':1,'step_id':'s1','action_type':'Move','parameters':{'amount':{'value':1,'unit':'microliter'}},'depends_on':[],'resources':[]}],'provenance':{'ir_hash':'0'*64,'simulator_versions':{},'noise_seed':None,'validator_version':'1.1.0'}}; print(load_schema()['$id']); assert validate_ir(payload)==payload"
+          /tmp/openatoms-wheel-test/bin/python -c "from openatoms.ir import load_schema, validate_ir; payload={'ir_version':'1.2.0','protocol_id':'00000000-0000-0000-0000-000000000000','correlation_id':'00000000-0000-0000-0000-000000000001','created_at':'2026-01-01T00:00:00+00:00','steps':[{'step':1,'step_id':'s1','action_type':'Move','parameters':{'amount':{'value':1,'unit':'microliter'}},'depends_on':[],'resources':[]}],'provenance':{'ir_hash':'0'*64,'simulator_versions':{},'noise_seed':None,'validator_version':'1.2.0'}}; print(load_schema()['$id']); assert validate_ir(payload)==payload"
 
   determinism-cantera:
     name: determinism-cantera
@@ -84,6 +84,14 @@ jobs:
         env:
           OPENATOMS_CI: "1"
         run: python scripts/verify_reproducibility.py
+
+      - name: Real ODE integration tests
+        env:
+          OPENATOMS_CI: "1"
+        run: pytest tests/test_real_ode_integration.py -v
+
+      - name: Ignition delay smoke
+        run: python -c "from openatoms.sim.registry.kinetics_sim import VirtualReactor; from openatoms.units import Q_; r = VirtualReactor(); d = r.compute_ignition_delay({'H2': 2.0, 'O2': 1.0, 'N2': 3.76}, Q_(1000, 'kelvin'), Q_(1, 'atm')); assert d['converged'], 'ignition delay did not converge'"
 
   all-extras-optional:
     name: all-extras-optional

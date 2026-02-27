@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import warnings
-from types import SimpleNamespace
 
 import pytest
 
@@ -17,6 +16,7 @@ class _FakeSolution:
         self.chemical_potentials = [0.0 for _ in self.species_names]
         self.T = 300.0
         self.P = 101325.0
+        self.source = "fake.yaml"
 
     @property
     def TPX(self):
@@ -40,17 +40,43 @@ class _FakeSolution:
     def species_index(self, species: str) -> int:
         return self.species_names.index(species)
 
+    def mole_fraction_dict(self):
+        return dict(self._composition)
+
+    def __getitem__(self, species: str):
+        return type("SpeciesView", (), {"X": [self._composition.get(species, 0.0)]})()
+
 
 class _FakeCantera:
     Solution = _FakeSolution
+    __version__ = "fake-cantera-1.0"
 
     @staticmethod
     def IdealGasReactor(gas, energy="on"):
-        return SimpleNamespace(thermo=gas)
+        return type("FakeReactor", (), {"thermo": gas})()
 
     @staticmethod
     def IdealGasConstPressureReactor(gas, energy="on"):
-        return SimpleNamespace(thermo=gas)
+        return type("FakeReactor", (), {"thermo": gas})()
+
+    @staticmethod
+    def get_data_directories():
+        return []
+
+    class ReactorNet:
+        def __init__(self, reactors):
+            self.reactor = reactors[0]
+            self.time = 0.0
+            self.rtol = 1.0e-9
+            self.atol = 1.0e-15
+            self.max_time_step = 1.0e-3
+
+        def step(self):
+            dt = max(self.max_time_step, 1.0e-6)
+            self.time += dt
+            self.reactor.thermo.T += 5000.0 * dt
+            self.reactor.thermo.P += 1000.0 * dt
+            return self.time
 
 
 def test_affinity_heuristic_is_explicitly_state_defined(monkeypatch) -> None:

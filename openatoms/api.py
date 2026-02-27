@@ -196,12 +196,20 @@ def invoke_optional_simulator(
                 initial_temp_k=900.0,
                 residence_time_s=0.02,
             )
+            trajectory = output["trajectory"]  # type: ignore[assignment]
             return SimulatorInvocation(
                 simulator=simulator,
                 status="ok",
                 payload={
                     "state_observation_json": output["state_observation_json"],
-                    "trajectory_points": len(output["trajectory"].times_s),  # type: ignore[union-attr]
+                    "trajectory_points": len(trajectory.times_s),  # type: ignore[union-attr]
+                    "check_type": "validated_simulation",
+                    "solver_rtol": trajectory.solver_rtol,  # type: ignore[union-attr]
+                    "solver_atol": trajectory.solver_atol,  # type: ignore[union-attr]
+                    "mechanism_file": trajectory.mechanism_file,  # type: ignore[union-attr]
+                    "mechanism_hash": trajectory.mechanism_hash,  # type: ignore[union-attr]
+                    "cantera_version": trajectory.cantera_version,  # type: ignore[union-attr]
+                    "integrator": trajectory.integrator,  # type: ignore[union-attr]
                 },
             )
         trajectory = RoboticsSimulator().simulate_arm_trajectory(

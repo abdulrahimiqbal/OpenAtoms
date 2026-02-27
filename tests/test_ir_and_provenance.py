@@ -45,10 +45,31 @@ def _payload() -> dict:
             "ir_hash": "0" * 64,
             "simulator_versions": {"bio_kinetic": "1.0.0"},
             "noise_seed": 42,
-            "validator_version": "1.1.0",
+            "validator_version": "1.2.0",
         },
     }
     return attach_ir_hash(payload)
+
+
+def test_ir_legacy_1_1_payload_upgrades_to_1_2() -> None:
+    payload = _payload()
+    payload["ir_version"] = "1.1.0"
+    payload["provenance"]["validator_version"] = "1.1.0"
+    payload = attach_ir_hash(payload)
+
+    upgraded = validate_ir(payload)
+    assert upgraded["ir_version"] == "1.2.0"
+    assert upgraded["provenance"]["validator_version"] == "1.2.0"
+
+
+def test_load_ir_payload_upgrades_legacy_1_1_payload() -> None:
+    payload = _payload()
+    payload["ir_version"] = "1.1.0"
+    payload["provenance"]["validator_version"] = "1.1.0"
+    payload = attach_ir_hash(payload)
+
+    loaded = ir_module.load_ir_payload(json.dumps(payload))
+    assert loaded["ir_version"] == "1.2.0"
 
 
 def test_ir_schema_loads_and_validates() -> None:
@@ -102,7 +123,7 @@ def test_legacy_validate_protocol_payload_forwards() -> None:
 def test_single_runtime_schema_resource_is_canonical() -> None:
     canonical_version = schema_version()
     canonical_name = get_schema_resource_name()
-    assert canonical_version == "1.1.0"
+    assert canonical_version == "1.2.0"
     assert canonical_name == "ir.schema.json"
 
     json_resources = sorted(

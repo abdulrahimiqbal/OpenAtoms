@@ -1,8 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://openatoms.org/ir/v1.1.0/schema.json",
+  "$id": "https://openatoms.org/ir/v1.2.0/schema.json",
   "title": "OpenAtoms Protocol IR",
-  "description": "Machine-readable intermediate representation of a validated physical protocol. Version 1.1.0.",
+  "description": "Machine-readable intermediate representation of a validated physical protocol. Version 1.2.0.",
   "type": "object",
   "required": [
     "ir_version",
@@ -15,7 +15,7 @@
   "properties": {
     "ir_version": {
       "type": "string",
-      "const": "1.1.0"
+      "const": "1.2.0"
     },
     "protocol_id": {
       "type": "string",
@@ -106,6 +106,23 @@
       },
       "additionalProperties": true
     },
+    "simulator_reports": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "check_type": {
+            "type": "string",
+            "enum": [
+              "safety_gate",
+              "validated_simulation",
+              "not_simulated"
+            ]
+          }
+        },
+        "additionalProperties": true
+      }
+    },
     "provenance": {
       "type": "object",
       "required": [
@@ -141,4 +158,3 @@
   },
   "additionalProperties": true
 }
-

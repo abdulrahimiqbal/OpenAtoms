@@ -469,6 +469,7 @@ def _dry_run_report(ir_payload: dict[str, Any]) -> dict[str, Any]:
     except Exception as exc:
         return {
             "status": "failed",
+            "check_type": "safety_gate",
             "mode": "deterministic_ir_gate",
             "scope": "heuristic",
             "error": {"code": OEB006_BUNDLE_INVALID, "message": str(exc)},
@@ -480,6 +481,7 @@ def _dry_run_report(ir_payload: dict[str, Any]) -> dict[str, Any]:
 
     return {
         "status": "ok",
+        "check_type": "safety_gate",
         "mode": "deterministic_ir_gate",
         "scope": "heuristic",
         "error": None,
@@ -490,23 +492,63 @@ def _dry_run_report(ir_payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _resolve_cantera_mechanism_metadata(
+    mechanism_name: str = "h2o2.yaml",
+) -> dict[str, str] | None:
+    try:
+        import cantera as ct  # type: ignore
+    except Exception:
+        return None
+
+    candidates: list[Path] = []
+    for directory in ct.get_data_directories():
+        candidate = Path(directory) / mechanism_name
+        if candidate.is_file():
+            candidates.append(candidate.resolve())
+
+    if not candidates:
+        try:
+            gas = ct.Solution(mechanism_name)
+            source = Path(str(getattr(gas, "source", mechanism_name)))
+            if source.is_file():
+                candidates.append(source.resolve())
+        except Exception:
+            return None
+
+    if not candidates:
+        return None
+
+    mechanism_path = sorted(candidates, key=lambda path: path.as_posix())[0]
+    return {
+        "mechanism_file": mechanism_path.name,
+        "mechanism_hash": _sha256_file(mechanism_path),
+    }
+
+
 def _run_simulators(
     protocol: ProtocolGraph | None,
     simulators: Sequence[str],
-) -> tuple[list[dict[str, Any]], dict[str, dict[str, Any]]]:
+) -> tuple[list[dict[str, Any]], dict[str, dict[str, Any]], dict[str, Any]]:
     from .api import invoke_optional_simulator
 
     simulator_status: list[dict[str, Any]] = []
     simulator_reports: dict[str, dict[str, Any]] = {}
+    physics_inputs: dict[str, Any] = {}
 
     for simulator in simulators:
         name = str(simulator)
         if name not in _SIMULATOR_NAMES:
             simulator_status.append(
-                {"name": name, "status": "failed", "reason": "unknown simulator"}
+                {
+                    "name": name,
+                    "status": "failed",
+                    "reason": "unknown simulator",
+                    "check_type": "not_simulated",
+                }
             )
             simulator_reports[name] = {
                 "status": "failed",
+                "check_type": "not_simulated",
                 "reason": "unknown simulator",
                 "statement": "Simulator validity is outside OpenAtoms certification scope.",
             }
@@ -514,9 +556,12 @@ def _run_simulators(
 
         if protocol is None:
             reason = "protocol object not supplied; simulator replay skipped"
-            simulator_status.append({"name": name, "status": "skipped", "reason": reason})
+            simulator_status.append(
+                {"name": name, "status": "skipped", "reason": reason, "check_type": "not_simulated"}
+            )
             simulator_reports[name] = {
                 "status": "skipped",
+                "check_type": "not_simulated",
                 "reason": reason,
                 "statement": "Simulator validity is outside OpenAtoms certification scope.",
             }
@@ -525,30 +570,61 @@ def _run_simulators(
         try:
             result = invoke_optional_simulator(protocol, simulator=name)  # type: ignore[arg-type]
             if result.status == "ok":
-                simulator_status.append({"name": name, "status": "ran", "reason": None})
+                check_type = "validated_simulation" if name == "cantera" else "safety_gate"
+                payload = dict(result.payload)
+                if name == "cantera":
+                    metadata = _resolve_cantera_mechanism_metadata()
+                    if metadata is not None:
+                        payload["mechanism_file"] = metadata["mechanism_file"]
+                        payload["mechanism_hash"] = metadata["mechanism_hash"]
+                        physics_inputs["cantera"] = dict(metadata)
+                    elif (
+                        isinstance(payload.get("mechanism_file"), str)
+                        and isinstance(payload.get("mechanism_hash"), str)
+                    ):
+                        physics_inputs["cantera"] = {
+                            "mechanism_file": str(payload["mechanism_file"]),
+                            "mechanism_hash": str(payload["mechanism_hash"]),
+                        }
+
+                simulator_status.append(
+                    {"name": name, "status": "ran", "reason": None, "check_type": check_type}
+                )
                 simulator_reports[name] = {
                     "status": "ran",
-                    "payload": dict(result.payload),
+                    "check_type": check_type,
+                    "payload": payload,
                     "statement": "Simulator output is heuristic unless independently validated.",
                 }
+                if name == "cantera":
+                    if "mechanism_file" in payload:
+                        simulator_reports[name]["mechanism_file"] = payload["mechanism_file"]
+                    if "mechanism_hash" in payload:
+                        simulator_reports[name]["mechanism_hash"] = payload["mechanism_hash"]
             else:
                 reason = result.reason or "optional dependency unavailable"
-                simulator_status.append({"name": name, "status": "skipped", "reason": reason})
+                simulator_status.append(
+                    {"name": name, "status": "skipped", "reason": reason, "check_type": "not_simulated"}
+                )
                 simulator_reports[name] = {
                     "status": "skipped",
+                    "check_type": "not_simulated",
                     "reason": reason,
                     "payload": dict(result.payload),
                     "statement": "Simulator output is heuristic unless independently validated.",
                 }
         except Exception as exc:
-            simulator_status.append({"name": name, "status": "failed", "reason": str(exc)})
+            simulator_status.append(
+                {"name": name, "status": "failed", "reason": str(exc), "check_type": "not_simulated"}
+            )
             simulator_reports[name] = {
                 "status": "failed",
+                "check_type": "not_simulated",
                 "reason": str(exc),
                 "statement": "Simulator output is heuristic unless independently validated.",
             }
 
-    return simulator_status, simulator_reports
+    return simulator_status, simulator_reports, physics_inputs
 
 
 def _build_provenance(
@@ -806,7 +882,9 @@ def create_bundle(
         _write_json(checks_dir / "dry_run.json", dry_run_result)
 
         simulator_names = list(simulators or [])
-        simulator_status, simulator_reports = _run_simulators(protocol, simulator_names)
+        simulator_status, simulator_reports, physics_inputs = _run_simulators(
+            protocol, simulator_names
+        )
         for name, report in simulator_reports.items():
             _write_json(checks_dir / "simulators" / name / "report.json", report)
 
@@ -839,6 +917,7 @@ def create_bundle(
             "file_hashes": file_hashes,
             "seeds": _default_seeds(seeds),
             "simulator_status": simulator_status,
+            "physics_inputs": physics_inputs,
             "disclaimers": [
                 (
                     "Heuristic and simulator checks are safety gates only; "
@@ -1184,7 +1263,7 @@ def replay_bundle(
                 if isinstance(item, dict) and isinstance(item.get("name"), str)
             ]
 
-        _, replay_sim_reports = _run_simulators(protocol, replay_simulator_names)
+        _, replay_sim_reports, _ = _run_simulators(protocol, replay_simulator_names)
 
         if not _compare_reports(recorded_validate, replay_validate):
             errors.append(

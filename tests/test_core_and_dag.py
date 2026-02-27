@@ -40,7 +40,7 @@ def test_protocol_graph_validates_move_and_transform() -> None:
 
     assert graph.dry_run() is True
     exported = graph.export_json()
-    assert '"ir_version": "1.1.0"' in exported
+    assert '"ir_version": "1.2.0"' in exported
 
 
 def test_volume_overflow_is_caught() -> None:
