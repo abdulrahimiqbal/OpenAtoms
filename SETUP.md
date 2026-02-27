@@ -22,6 +22,8 @@ You implement four things: a protocol, a simulator, a loop, and a bundle. The fr
 ## Step 1: Install and set up
 
 ```bash
+git clone https://github.com/abdulrahimiqbal/OpenAtoms.git
+cd OpenAtoms
 pip install -e ".[dev]"
 export ANTHROPIC_API_KEY=sk-...
 ```
@@ -86,6 +88,8 @@ What "evaluate" means is entirely up to you:
 from __future__ import annotations
 from dataclasses import dataclass
 from openatoms.errors import PhysicsError
+# Run from inside my_experiment/, OR add it to sys.path:
+# import sys; sys.path.insert(0, str(Path(__file__).parent))
 from protocol import MyProtocol
 
 
@@ -416,6 +420,12 @@ The loop is non-trivial. Test it.
 
 ```python
 # test_my_experiment.py
+# Run tests from inside your experiment directory:
+#   cd my_experiment
+#   pytest test_my_experiment.py -v
+#
+# Or from repo root with explicit path:
+#   pytest my_experiment/test_my_experiment.py -v --import-mode=importlib
 import pytest
 from simulator import MySimulator, MyProtocol
 from openatoms.errors import PhysicsError
