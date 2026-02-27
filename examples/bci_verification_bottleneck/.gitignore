@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+cache/*.json
+outputs/*.json
+outputs/*.zip
