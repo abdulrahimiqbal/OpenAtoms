@@ -34,7 +34,7 @@ dev = [
   "mypy>=1.8.0",
   "hypothesis>=6,<7",
   "pytest-cov>=7,<8",
-  "twine>=5,<6",
+  "twine>=5,<7",
 ]
 cantera = [
   "cantera>=3,<4",
