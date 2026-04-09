@@ -40,14 +40,14 @@ cantera = [
   "cantera>=3,<4",
 ]
 opentrons = [
-  "opentrons>=7,<9",
+  "opentrons>=7,<10",
 ]
 mujoco = [
   "mujoco>=3,<4",
 ]
 all = [
   "cantera>=3,<4",
-  "opentrons>=7,<9",
+  "opentrons>=7,<10",
   "mujoco>=3,<4",
 ]
 # Backward-compatible legacy aliases.
@@ -59,7 +59,7 @@ sim-mujoco = [
 ]
 sim-all = [
   "cantera>=3,<4",
-  "opentrons>=7,<9",
+  "opentrons>=7,<10",
   "mujoco>=3,<4",
 ]
 science = [
