@@ -18,6 +18,26 @@ Core:
 pip install -e ".[dev]"
 ```
 
+## First 5 Minutes: Accept One, Reject One
+
+Run the smallest proof trace without an API key, dataset, robot, or optional
+simulator:
+
+```bash
+python examples/first_five_minutes.py
+```
+
+It shows the core loop:
+
+```txt
+protocol proposal -> deterministic dry run -> accepted IR hash
+bad proposal -> structured PhysicsError -> remediation_hint
+```
+
+This is the minimum OpenAtoms claim: an AI-proposed physical protocol should not
+move downstream until deterministic checks either produce a reproducible IR or a
+machine-readable rejection.
+
 Optional simulator nodes:
 
 ```bash
