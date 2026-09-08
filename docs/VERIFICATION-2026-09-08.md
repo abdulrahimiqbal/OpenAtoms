@@ -20,6 +20,11 @@ Dependency markers now select Pint 0.24.4 on Python 3.10 and Pint 0.25+ on newer
 Python. This preserves the declared Python floor; the hosted Python 3.10 jobs
 are the verification for that compatibility path.
 
+The core-only hosted environment also exposed the BCI tests' direct NumPy
+import. NumPy is now declared in the development extra instead of being supplied
+incidentally by Cantera. Optional simulator installation is still not required
+for the core package.
+
 ## Executed locally
 
 macOS arm64, Python 3.14.5; an isolated environment installed with
