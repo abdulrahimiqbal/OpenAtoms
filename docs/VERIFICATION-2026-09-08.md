@@ -55,6 +55,25 @@ Relevant installed versions: Cantera 3.2.0, Pydantic 2.13.5, Pint 0.25.3,
 pytest 9.1.1, Ruff 0.16.6, mypy 2.3.1. These are an environment record,
 not a dependency lock or a guarantee for every future dependency resolution.
 
+## Executed on GitHub
+
+Source revision `1227448ba2b9a4e49255d21220b47c03002f9424` passed
+[CI run 34251014702](https://github.com/abdulrahimiqbal/OpenAtoms/actions/runs/34251014702)
+on Ubuntu with Python 3.10.21:
+
+- Required core job: passed. Main pytest invocation: 81 passed, 14 skipped.
+  Lint, public-surface typing, bundle checks, examples, minimal installation,
+  source/wheel build, and isolated wheel schema validation also passed.
+- Required Cantera job: passed. Three-run output reproducibility, 13 integration
+  and simulator tests, and the ignition-delay smoke check passed.
+- Optional all-extras import smoke: passed; this is not full behavioral testing
+  of every hardware integration.
+
+[CodeQL run 34251014739](https://github.com/abdulrahimiqbal/OpenAtoms/actions/runs/34251014739)
+also passed on that revision. A successful scan is not a security certification.
+These hosted results apply to the linked source revision; this section is a
+later documentation-only update recording those results.
+
 ## Reproduce and inspect
 
 ```sh
