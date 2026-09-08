@@ -14,6 +14,12 @@ A clean local environment exposed a second issue: the packaging test builds with
 `setuptools` and `wheel` are now explicit development dependencies. No tests were
 disabled, assertions weakened, or scientific results altered to make this pass.
 
+The first hosted run then exposed a pre-existing Python-version mismatch:
+Pint 0.25 requires Python 3.11, while the package and CI support Python 3.10.
+Dependency markers now select Pint 0.24.4 on Python 3.10 and Pint 0.25+ on newer
+Python. This preserves the declared Python floor; the hosted Python 3.10 jobs
+are the verification for that compatibility path.
+
 ## Executed locally
 
 macOS arm64, Python 3.14.5; an isolated environment installed with

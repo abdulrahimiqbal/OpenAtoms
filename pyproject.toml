@@ -21,7 +21,8 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence"
 ]
 dependencies = [
-  "pint>=0.25,<1",
+  "pint>=0.24.4,<0.25; python_version < '3.11'",
+  "pint>=0.25,<1; python_version >= '3.11'",
   "pydantic>=2,<3",
   "jsonschema>=4,<5",
 ]
