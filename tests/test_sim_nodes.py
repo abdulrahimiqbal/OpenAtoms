@@ -1,3 +1,5 @@
+import pytest
+
 from openatoms.actions import Move
 from openatoms.core import Container, Matter, Phase
 from openatoms.dag import ProtocolGraph
@@ -32,6 +34,7 @@ def test_ot2_simulator_catches_aspiration_error() -> None:
 
 
 def test_virtual_reactor_gibbs_check_returns_expected_sign() -> None:
+    pytest.importorskip("cantera")
     reactor = VirtualReactor(mechanism="h2o2.yaml")
     spontaneous, delta_g = reactor.check_gibbs_feasibility(
         reactants={"H2": 1.0, "O2": 0.5},

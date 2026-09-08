@@ -89,7 +89,7 @@ jobs:
       - name: Real ODE integration tests
         env:
           OPENATOMS_CI: "1"
-        run: pytest tests/test_real_ode_integration.py -v
+        run: pytest tests/test_real_ode_integration.py tests/test_sim_nodes.py -v
 
       - name: Ignition delay smoke
         run: |

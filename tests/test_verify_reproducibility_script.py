@@ -12,6 +12,9 @@ SCRIPT = ROOT / "scripts" / "verify_reproducibility.py"
 
 def _run(env_overrides: dict[str, str]) -> subprocess.CompletedProcess[str]:
     env = dict(os.environ)
+    # Model the requested mode independently of the machine running pytest.
+    for key in ("CI", "OPENATOMS_CI", "OPENATOMS_ALLOW_SKIP", "OPENATOMS_FORCE_MISSING_CANTERA"):
+        env.pop(key, None)
     env.update(env_overrides)
     return subprocess.run(
         [sys.executable, str(SCRIPT)],
@@ -34,6 +37,12 @@ def test_verify_reproducibility_local_can_skip() -> None:
     result = _run({"OPENATOMS_ALLOW_SKIP": "1", "OPENATOMS_FORCE_MISSING_CANTERA": "1"})
     assert result.returncode == 0
     assert "Skipping because OPENATOMS_ALLOW_SKIP=1." in result.stdout
+
+
+def test_generic_ci_cannot_skip_missing_cantera() -> None:
+    result = _run({"CI": "true", "OPENATOMS_ALLOW_SKIP": "1", "OPENATOMS_FORCE_MISSING_CANTERA": "1"})
+    assert result.returncode != 0
+    assert "requires deterministic thermo validation." in result.stdout
 
 
 def test_missing_cantera_fails_locally_without_skip_flag() -> None:

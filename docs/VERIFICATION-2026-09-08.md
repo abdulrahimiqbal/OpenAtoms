@@ -11,8 +11,8 @@ now uses a block scalar. The workflow also supports manual dispatch.
 
 A clean local environment exposed a second issue: the packaging test builds with
 `--no-isolation`, but the development extra did not install its build backend.
-`setuptools` and `wheel` are now explicit development dependencies. No tests were
-disabled, assertions weakened, or scientific results altered to make this pass.
+`setuptools` and `wheel` are now explicit development dependencies. No scientific
+results or numerical assertions were altered to make this pass.
 
 The first hosted run then exposed a pre-existing Python-version mismatch:
 Pint 0.25 requires Python 3.11, while the package and CI support Python 3.10.
@@ -24,6 +24,14 @@ The core-only hosted environment also exposed the BCI tests' direct NumPy
 import. NumPy is now declared in the development extra instead of being supplied
 incidentally by Cantera. Optional simulator installation is still not required
 for the core package.
+
+Hosted pytest also exposed environment-dependent tests: local-mode subprocess
+tests inherited GitHub's `CI=true`, and one Cantera test lacked the optional
+dependency guard used by the other simulator tests. The subprocess helper now
+isolates the four mode flags, with an added assertion that generic CI cannot
+skip missing Cantera. The simulator test skips only when Cantera is absent and
+is explicitly included in the required Cantera job, where its original physical
+assertions still execute. This keeps the minimal installation genuinely minimal.
 
 ## Executed locally
 
