@@ -33,6 +33,11 @@ skip missing Cantera. The simulator test skips only when Cantera is absent and
 is explicitly included in the required Cantera job, where its original physical
 assertions still execute. This keeps the minimal installation genuinely minimal.
 
+Finally, the wheel-install smoke command used a shell double-quoted Python
+string containing the JSON Schema key `$id`. The shell expanded that key before
+Python saw it. The command now uses a quoted heredoc and Python isolated mode,
+preserving the key and checking the installed wheel rather than local source.
+
 ## Executed locally
 
 macOS arm64, Python 3.14.5; an isolated environment installed with
@@ -40,7 +45,7 @@ macOS arm64, Python 3.14.5; an isolated environment installed with
 
 | Check | Result |
 | --- | --- |
-| Full `pytest -q` suite | 94 passed; 31 deprecation warnings; 135.79 seconds |
+| Full `CI=true pytest -q` suite | 95 passed; 31 deprecation warnings; 59.08 seconds |
 | CI's selected Ruff checks | Passed |
 | `mypy --follow-imports=skip openatoms/api.py openatoms/ir/__init__.py` | Passed |
 | `OPENATOMS_CI=1 python scripts/verify_reproducibility.py` | Passed; identical Node B outputs across three runs |
