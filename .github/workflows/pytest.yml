@@ -1,6 +1,7 @@
 name: CI
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
   pull_request:
@@ -91,7 +92,8 @@ jobs:
         run: pytest tests/test_real_ode_integration.py -v
 
       - name: Ignition delay smoke
-        run: python -c "from openatoms.sim.registry.kinetics_sim import VirtualReactor; from openatoms.units import Q_; r = VirtualReactor(); d = r.compute_ignition_delay({'H2': 2.0, 'O2': 1.0, 'N2': 3.76}, Q_(1000, 'kelvin'), Q_(1, 'atm')); assert d['converged'], 'ignition delay did not converge'"
+        run: |
+          python -c "from openatoms.sim.registry.kinetics_sim import VirtualReactor; from openatoms.units import Q_; r = VirtualReactor(); d = r.compute_ignition_delay({'H2': 2.0, 'O2': 1.0, 'N2': 3.76}, Q_(1000, 'kelvin'), Q_(1, 'atm')); assert d['converged'], 'ignition delay did not converge'"
 
   all-extras-optional:
     name: all-extras-optional
